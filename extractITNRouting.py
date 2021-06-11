@@ -3,9 +3,7 @@
 
 import json
 from lxml import etree
-import geopandas as gpd
 import pandas as pd
-import numpy as np
 import os
 
 ########################
@@ -19,8 +17,7 @@ with open("config.json") as f:
 
 gis_data_dir = config['gis_data_dir']
 
-itnDir = os.path.join(gis_data_dir, config["mastermap_itn_name"])
-itnF = config["mastermap_itn_name"] + "_0.gml"
+itnF = os.path.join(gis_data_dir, config["mastermap_itn_file"])
 
 output_directory = os.path.join(gis_data_dir, "itn_route_info")
 
@@ -35,12 +32,12 @@ output_node_info_path = os.path.join(output_directory, "extracted_RLNodes.csv")
 # Load Data
 #
 #######################
-elemTree = etree.parse(os.path.join(itnDir, itnF))
+elemTree = etree.parse(itnF)
 itnTree = elemTree.getroot()
 rl_elements = itnTree.findall(".//osgb:RoadLink", itnTree.nsmap)
 
 
-dfRLNodes = pd.DataFrame(columns = ['RoadLinkFID', 'PlusNodeFID','MinusNodeFID'])
+dfRLNodes = pd.DataFrame({'RoadLinkFID':[], 'PlusNodeFID':[],'MinusNodeFID':[]})
 
 def get_road_link_nodes(road_link_element, namespaces, node_orientation = None):
     '''
@@ -69,7 +66,7 @@ for rl_element in rl_elements:
 
 ri_elements = itnTree.findall(".//osgb:RoadRouteInformation", itnTree.nsmap)
 
-dfRRI = pd.DataFrame(columns=["RoadRouteInformationFID", "DirectedLinkFID", "DirectedLinkOrientation"])
+dfRRI = pd.DataFrame({"RoadRouteInformationFID":[], "DirectedLinkFID":[], "DirectedLinkOrientation":[]})
 
 for ri_element in ri_elements:
 	ri_fid = ri_element.get("fid")
@@ -97,14 +94,12 @@ assert dfRRI.isnull().any().any() == False
 #
 #########################
 
-# Can see effect of duplicates by grouping by road link id and counting number of orientation entries for that link. Would expect mas 2 entries but some links have three
-dfRRI.groupby('DirectedLinkFID')['DirectedLinkOrientation'].transform(lambda df: df.shape[0]).value_counts()
-
 # Now drop duplicated link-orientation combos. In future need to refine this to incorporate differences between vehicles
 dfRRI = dfRRI.drop_duplicates(subset=['DirectedLinkFID','DirectedLinkOrientation'])
 
+# Expect max 2 entries but some links have three
 # Now check that links only have max of 2 orientation entries
-assert dfRRI.groupby('DirectedLinkFID')['DirectedLinkOrientation'].transform(lambda df: df.shape[0]).max() == 2
+assert dfRRI.groupby('DirectedLinkFID')['DirectedLinkOrientation'].apply(lambda df: df.shape[0]).max() == 2
 
 
 
