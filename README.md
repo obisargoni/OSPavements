@@ -9,7 +9,7 @@ Currently, to produce the required data the scripts need to be run in a certain 
 
 This gets the directoinality information for road links and road nodes for all of the ITN road link data and saves it
 
-2. processRoadNetworkData
+2. processRoadNetworkData.py
 
 Selects the road network data that lies in the study area. Cleans the Open Roads data to simplify the lines to have minimal angular deviation along a line.
 
