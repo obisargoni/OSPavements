@@ -918,46 +918,6 @@ assert gdfORLink.loc[ ~(gdfORLink['PNodeFID'].isin(gdfORNode['node_fid']))].shap
 gdfORNode.crs = projectCRS
 gdfORLink.crs = projectCRS
 
-################################
-#
-# alternatively use osmnx to select open road network
-#
-################################
-
-# This point based mathod doesn't worth for some reason
-'''
-gdfPOIsWSG84 = gdfPOIs.to_crs(epsg=4326)
-centre_point = gdfPOIsWSG84.loc[gdfPOIsWSG84['ref_no'] == config['centre_poi_ref'], 'geometry'].values[0].coords[0]
-open_network = osmnx.graph.graph_from_point(centre_point, dist=config['study_area_dist'], dist_type='bbox', network_type='all', simplify=True, retain_all=False, truncate_by_edge=True, clean_periphery=True, custom_filter=None)
-'''
-
-# Try using polygon instead
-open_network = osmnx.graph.graph_from_polygon(studyPolygonWSG84, network_type='all', simplify=True, retain_all=False, truncate_by_edge=True, clean_periphery=True, custom_filter=None)
-
-# Get undirected non multi graph version
-#D = osmnx.get_digraph(open_network) # Converts from multi di graph to di graph
-U = open_network.to_undirected()
-
-gdf_nodes, gdf_edges = osmnx.graph_to_gdfs(U)
-gdf_edges.reset_index(inplace = True)
-gdf_nodes = gdf_nodes.to_crs(projectCRS)
-gdf_edges = gdf_edges.to_crs(projectCRS)
-
-# Find node closest to centre OR node
-gdf_nodes['dist_to_centre'] = gdf_nodes.distance(centre_poi_geom)
-nearest_node_id = gdf_nodes.sort_values(by = 'dist_to_centre', ascending=True).index[0]
-
-reachable_nodes = largest_connected_component_nodes_within_dist(U, nearest_node_id, config['study_area_dist'], 'length')
-
-gdf_nodes = gdf_nodes.loc[reachable_nodes]
-gdf_edges = gdf_edges.loc[ ( gdf_edges['u'].isin(reachable_nodes)) & (gdf_edges['v'].isin(reachable_nodes))]
-
-gdf_nodes.reset_index(inplace=True)
-
-# osmid col contains list, need to convert to single string
-for col in gdf_edges.columns:
-    gdf_edges.loc[gdf_edges[col].map(lambda v: isinstance(v, list)), col] = gdf_edges.loc[gdf_edges[col].map(lambda v: isinstance(v, list)), col].map(lambda v: "-".join(str(i) for i in v))
-
 #############################
 #
 #
@@ -971,6 +931,3 @@ gdfITNNode.to_file(output_itn_node_file)
 
 gdfORLink.to_file(output_or_link_file)
 gdfORNode.to_file(output_or_node_file)
-
-gdf_edges.to_file(os.path.join(output_directory, "osmnx_edges.shp"))
-gdf_nodes.to_file(os.path.join(output_directory, "osmnx_nodes.shp"))
