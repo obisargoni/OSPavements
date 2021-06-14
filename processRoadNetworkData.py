@@ -760,6 +760,16 @@ gdfITNNode.drop_duplicates(inplace = True)
 gdfITNNode.rename(columns = {'fid_node':'fid'}, inplace = True)
 
 
+# Repeat for Open Roads
+gdfORLink = gdfORLink.loc[ (gdfORLink.geometry.intersects(studyPolygon)) | (gdfORLink.geometry.within(studyPolygon))]
+gdfORNode = gpd.sjoin(gdfORNode, gdfORLink.loc[:,['identifier','geometry']], op = 'intersects', lsuffix = 'node', rsuffix = 'line')
+
+# Clean up
+gdfORNode.drop(['identifier_line', 'index_line'], axis = 1, inplace=True)
+gdfORNode.drop_duplicates(inplace = True)
+gdfORNode.rename(columns = {'identifier_node':'identifier'}, inplace = True)
+
+
 ##############################
 #
 # Select the OS Open Road data that lies in the study area
@@ -787,7 +797,7 @@ gdfORLink = gdfORLink.rename(columns = {"identifier": "osmid", 'startNode':'u', 
 gdfORLink.set_index(['u','v','key'], inplace=True)
 gdfORLink['geometry'] = gdfORLink['geometry'].map(make_linestring_coords_2d)
 
-gdfORNode["geometry"] = gdfORNode["geometry"].map(lambda g: g[0])
+#gdfORNode["geometry"] = gdfORNode["geometry"].map(lambda g: g[0])
 gdfORNode = gdfORNode.rename(columns = {"identifier": "osmid"})
 gdfORNode['x'] = gdfORNode.loc[:, 'geometry'].map(lambda g: g.x)
 gdfORNode['y'] = gdfORNode.loc[:, 'geometry'].map(lambda g: g.y)
