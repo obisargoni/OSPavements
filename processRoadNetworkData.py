@@ -18,6 +18,7 @@ from shapely.geometry import Point, MultiPoint, Polygon, MultiPolygon, LineStrin
 from shapely import ops
 import itertools
 import copy
+import fiona
 
 ######################
 #
@@ -663,14 +664,9 @@ with open("config.json") as f:
 
 gis_data_dir = config['gis_data_dir']
 
-itn_directory = os.path.join(gis_data_dir, config['mastermap_itn_name'])
-itn_link_file = os.path.join(itn_directory, "mastermap-itn RoadLink", "mastermap-itn RoadLink.shp")
-itn_node_file = os.path.join(itn_directory, "mastermap-itn RoadNode", "mastermap-itn RoadNode.shp")
-
-open_roads_directory = os.path.join(gis_data_dir, config['open_roads_dir'])
-or_link_file = os.path.join(open_roads_directory, config['open_roads_link_file'])
-or_node_file = os.path.join(open_roads_directory, config['open_roads_node_file'])
-
+itn_file = os.path.join(gis_data_dir, config['mastermap_itn_file'])
+open_roads_link_file = os.path.join(gis_data_dir, config['open_roads_link_file'])
+open_roads_node_file = os.path.join(gis_data_dir, config['open_roads_node_file'])
 poi_file = os.path.join(gis_data_dir, config['poi_file'])
 
 output_directory = os.path.join(gis_data_dir, "processed_gis_data")
@@ -696,20 +692,37 @@ output_or_node_file = os.path.join(output_directory, config["openroads_node_proc
 ##########################
 
 # Mastermap ITN data - for road network
-gdfITNLink = gpd.read_file(itn_link_file)
-gdfITNLink.crs = projectCRS
+gdfITNLink = gpd.read_file(itn_file, layer = "RoadLink")
+if gdfITNLink.crs is None:
+    gdfITNLink.crs = projectCRS
+else:
+    assert gdfITNLink.crs.to_string().lower() == projectCRS
 
-gdfITNNode = gpd.read_file(itn_node_file)
-gdfITNNode.crs = projectCRS
+gdfITNNode = gpd.read_file(itn_file, layer = "RoadNode")
+if gdfITNNode.crs is None:
+    gdfITNNode.crs = projectCRS
+else:
+    assert gdfITNNode.crs.to_string().lower() == projectCRS
 
 # OS Open Road - for ped road network
-gdfORLink = gpd.read_file(or_link_file)
-gdfORLink.crs = projectCRS
+gdfORLink = gpd.read_file(open_roads_link_file)
+if gdfORLink.crs is None:
+    gdfORLink.crs = projectCRS
+else:
+    assert gdfORLink.crs.to_string().lower() == projectCRS
 
-gdfORNode = gpd.read_file(or_node_file)
-gdfORNode.crs = projectCRS
+gdfORNode = gpd.read_file(open_roads_node_file)
+if gdfORNode.crs is None:
+    gdfORNode.crs = projectCRS
+else:
+    assert gdfORNode.crs.to_string().lower() == projectCRS
 
-gdfPOIs = gpd.read_file(poi_file)
+c = fiona.open(poi_file)
+gdfPOIs = gpd.GeoDataFrame.from_features(c)
+if gdfPOIs.crs is None:
+    gdfPOIs.crs = projectCRS
+else:
+    assert gdfPOIs.crs.to_string().lower() == projectCRS
 
 # Study area polygon - to select data within the study area
 '''
