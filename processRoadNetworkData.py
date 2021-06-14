@@ -725,20 +725,13 @@ else:
     assert gdfPOIs.crs.to_string().lower() == projectCRS
 
 # Study area polygon - to select data within the study area
-'''
-gdfSelect = gpd.read_file(selection_layer_file)
-gdfSelect.crs = projectCRS
-SelectPolygon = gdfSelect.loc[0,'geometry']
-'''
 centre_poi = gdfPOIs.loc[gdfPOIs['ref_no'] == config['centre_poi_ref']] 
 centre_poi_geom = centre_poi['geometry'].values[0]
 
-seriesStudyArea = centre_poi.buffer(config['study_area_dist']+100)
+seriesStudyArea = centre_poi.buffer(config['study_area_dist'])
 seriesStudyArea.to_file(os.path.join(gis_data_dir, "study_area.shp"))
-gsStudyAreaWSG84 = seriesStudyArea.to_crs(epsg=4326)
 
 studyPolygon = seriesStudyArea.values[0]
-studyPolygonWSG84 = gsStudyAreaWSG84.values[0]
 
 ################################
 #
