@@ -735,6 +735,7 @@ studyPolygon = seriesStudyArea.values[0]
 
 ################################
 #
+# First clip ITN and OR networks to study area buffer, reduces size of data, makes it easier to work with
 # Select the ITN Road Network that lies in the study area
 #
 # Need to use study polygon rather than network distance method because at this stage the ITN network has not been created.
