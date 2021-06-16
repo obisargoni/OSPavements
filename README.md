@@ -23,7 +23,7 @@ Given a polygon covering the study area, this extracts the road links and nodes,
 
 It also processes and cleans this data, for example linking road links (both open road and ITN) with vehicle and pedestrian space
 
-5. createPedestrianNetwork.py
+5. createPavementNetwork.py
 
 Creates a network approximating the paths available to a pedestrian in that separate side of the road have different nodes with links to connect them across junctions
 
