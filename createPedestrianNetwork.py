@@ -290,6 +290,36 @@ def nearest_geometry_point_between_angles(a1, a2, start_point, seriesGeoms, seri
         
         return nearest_point
 
+def point_located_between_angles(a1, a2, start_point, seriesRoadLinks, d = 5):
+    si_road_link = seriesRoadLinks.sindex
+
+    mid_angle = angle_range_midpoint(a1, a2)
+
+    p = Point([start_point.x + d*np.sin(mid_angle), start_point.y + d*np.cos(mid_angle)])
+    l = LineString([start_point,p])
+
+    # Check this doesn't intersect a road link
+    intersects_road_links = False
+    for i in si_road_link.intersection(l.bounds):
+        if seriesRoadLinks[i].intersects(l):
+            intersects_road_links = True
+            break
+    while intersects_road_links:
+        d-=0.3
+        p = Point([start_point.x + d*np.sin(mid_angle), start_point.y + d*np.cos(mid_angle)])
+        l = LineString([start_point,p])
+    
+        for i in si_road_link.intersection(l.bounds):
+            if seriesRoadLinks[i].intersects(l):
+                intersects_road_links = True
+                break
+        intersects_road_links = False
+
+        if d<0:
+            p = None
+            break
+    return p
+
 def nearest_point_in_coord_sequence(coords, min_dist, start_point, a1, a2, seriesRoadLinks, si_road_link):
     chosen_point = None
     for c in coords:
