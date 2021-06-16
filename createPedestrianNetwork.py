@@ -719,31 +719,54 @@ gdfBoundary.index = np.arange(gdfBoundary.shape[0])
 # Buffer the boundary so that nodes are located slightly away from walls
 boundary_geoms = gdfBoundary['geometry']
 pavement_geoms = gdfTopoPed['geometry']
+island_geoms = gdf_islands_remove['geometry']
 
-dfPedNodes['boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, boundary_geoms, method = 'ray_intersection', angle_range = 90, ray_length = 30, crs = projectCRS)
-dfPedNodes['pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, pavement_geoms, method = 'ray_intersection', angle_range = 90, ray_length = 30, crs = projectCRS)
+boundary_geoms.index = np.arange(len(boundary_geoms))
+pavement_geoms.index = np.arange(len(pavement_geoms))
+island_geoms.index = np.arange(len(island_geoms))
+
+dfPedNodes['boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, boundary_geoms, method = 'ray_intersection', required_range = 90, ray_length = 20, crs = projectCRS)
+dfPedNodes['pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, pavement_geoms, method = 'ray_intersection', required_range = 90, ray_length = 20, crs = projectCRS)
 
 # Now choose final node
 dfPedNodes['geometry'] = dfPedNodes.apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
-gdfPedNodes = gpd.GeoDataFrame(dfPedNodes, geometry = 'geometry')
 
 # Run checks
-n_missing_nodes = gdfPedNodes.loc[ gdfPedNodes['geometry'].isnull()].shape[0]
+n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
 print("Number of missing nodes: {}".format(n_missing_nodes))
 
 if n_missing_nodes > 0:
     print("Finding missing nodes by removing angular range constraint")
-    missing_index = gdfPedNodes.loc[ gdfPedNodes['geometry'].isnull()].index
+    missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
 
-    dfPedNodes.loc[missing_index, 'boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, boundary_geoms, method = 'ray_intersection', angle_range = None, ray_length = 30, crs = projectCRS)
-    dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, pavement_geoms, method = 'ray_intersection', angle_range = None, ray_length = 30, crs = projectCRS)
+    dfPedNodes.loc[missing_index, 'boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, boundary_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS)
+    dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, pavement_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS)
     dfPedNodes.loc[missing_index, 'geometry'] = dfPedNodes.loc[missing_index].apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
 
-    gdfPedNodes = gpd.GeoDataFrame(dfPedNodes, geometry = 'geometry', crs = projectCRS)
-    n_missing_nodes = gdfPedNodes.loc[ gdfPedNodes['geometry'].isnull()].shape[0]
+    
+    n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
     print("Number of missing nodes: {}".format(n_missing_nodes))
 
+if n_missing_nodes > 0:
+    print("Finding missing nodes by including islands")
+    missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
 
+    dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, island_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS)
+    dfPedNodes.loc[missing_index, 'geometry'] = dfPedNodes.loc[missing_index].apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
+
+    n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
+    print("Number of missing nodes: {}".format(n_missing_nodes))
+
+if n_missing_nodes > 0:
+    print("Finding missing nodes by assigning default coordiantes")
+    missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
+
+    dfPedNodes.loc[missing_index, 'geometry'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, None, method = 'default', required_range = None, ray_length = 20, crs = projectCRS)
+
+    n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
+    print("Number of missing nodes: {}".format(n_missing_nodes))
+
+gdfPedNodes = gpd.GeoDataFrame(dfPedNodes, geometry = 'geometry', crs = projectCRS)
 # check for duplicates?
 
 gdfPedNodes['fid'] = ["pave_node_{}".format(i) for i in range(gdfPedNodes.shape[0])]
