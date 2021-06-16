@@ -789,6 +789,9 @@ gdfPedLinks = gpd.GeoDataFrame(dfPedLinks, geometry = 'geometry', crs = projectC
 # Drop duplicated edges - don't expect any multi edges so drop duplicated fids since this implies duplicated edge between nodes
 gdfPedLinks = gdfPedLinks.drop_duplicates(subset = ['fid'])
 
+# Repair cases where a pavement links gets classified as a road crosisng link bc it intersects a road link
+gdfPedLinks = repair_non_crossing_links(gdfORLink['fid'].unique(), gdfPedNodes, gdfPedLinks)
+
 ###################################
 #
 #
