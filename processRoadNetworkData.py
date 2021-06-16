@@ -688,245 +688,248 @@ output_or_link_file = os.path.join(output_directory, config["openroads_link_proc
 output_or_node_file = os.path.join(output_directory, config["openroads_node_processed_file"])
 
 
-###########################
-#
-#
-# Load Data
-# 
-#
-##########################
+def run():
 
-# Mastermap ITN data - for road network
-gdfITNLink = gpd.read_file(itn_file, layer = "RoadLink")
-if gdfITNLink.crs is None:
-    gdfITNLink.crs = projectCRS
-else:
-    assert gdfITNLink.crs.to_string().lower() == projectCRS
+    ###########################
+    #
+    #
+    # Load Data
+    # 
+    #
+    ##########################
 
-gdfITNNode = gpd.read_file(itn_file, layer = "RoadNode")
-if gdfITNNode.crs is None:
-    gdfITNNode.crs = projectCRS
-else:
-    assert gdfITNNode.crs.to_string().lower() == projectCRS
+    # Mastermap ITN data - for road network
+    gdfITNLink = gpd.read_file(itn_file, layer = "RoadLink")
+    if gdfITNLink.crs is None:
+        gdfITNLink.crs = projectCRS
+    else:
+        assert gdfITNLink.crs.to_string().lower() == projectCRS
 
-# OS Open Road - for ped road network
-gdfORLink = gpd.read_file(open_roads_link_file)
-if gdfORLink.crs is None:
-    gdfORLink.crs = projectCRS
-else:
-    assert gdfORLink.crs.to_string().lower() == projectCRS
+    gdfITNNode = gpd.read_file(itn_file, layer = "RoadNode")
+    if gdfITNNode.crs is None:
+        gdfITNNode.crs = projectCRS
+    else:
+        assert gdfITNNode.crs.to_string().lower() == projectCRS
 
-gdfORNode = gpd.read_file(open_roads_node_file)
-if gdfORNode.crs is None:
-    gdfORNode.crs = projectCRS
-else:
-    assert gdfORNode.crs.to_string().lower() == projectCRS
+    # OS Open Road - for ped road network
+    gdfORLink = gpd.read_file(open_roads_link_file)
+    if gdfORLink.crs is None:
+        gdfORLink.crs = projectCRS
+    else:
+        assert gdfORLink.crs.to_string().lower() == projectCRS
 
-c = fiona.open(poi_file)
-gdfPOIs = gpd.GeoDataFrame.from_features(c)
-if gdfPOIs.crs is None:
-    gdfPOIs.crs = projectCRS
-else:
-    assert gdfPOIs.crs.to_string().lower() == projectCRS
+    gdfORNode = gpd.read_file(open_roads_node_file)
+    if gdfORNode.crs is None:
+        gdfORNode.crs = projectCRS
+    else:
+        assert gdfORNode.crs.to_string().lower() == projectCRS
 
-# Study area polygon - to select data within the study area
-centre_poi = gdfPOIs.loc[gdfPOIs['ref_no'] == config['centre_poi_ref']] 
-centre_poi_geom = centre_poi['geometry'].values[0]
+    c = fiona.open(poi_file)
+    gdfPOIs = gpd.GeoDataFrame.from_features(c)
+    if gdfPOIs.crs is None:
+        gdfPOIs.crs = projectCRS
+    else:
+        assert gdfPOIs.crs.to_string().lower() == projectCRS
 
-seriesStudyArea = centre_poi.buffer(config['study_area_dist'])
-seriesStudyArea.to_file(os.path.join(gis_data_dir, "study_area.shp"))
+    # Study area polygon - to select data within the study area
+    centre_poi = gdfPOIs.loc[gdfPOIs['ref_no'] == config['centre_poi_ref']] 
+    centre_poi_geom = centre_poi['geometry'].values[0]
 
-studyPolygon = seriesStudyArea.values[0]
+    seriesStudyArea = centre_poi.buffer(config['study_area_dist'])
+    seriesStudyArea.to_file(os.path.join(gis_data_dir, "study_area.shp"))
 
-################################
-#
-# First clip ITN and OR networks to study area buffer, reduces size of data, makes it easier to work with
-# Select the ITN Road Network that lies in the study area
-#
-# Need to use study polygon rather than network distance method because at this stage the ITN network has not been created.
-# This is done in the script makeITNdirectional.py
-#
-################################
+    studyPolygon = seriesStudyArea.values[0]
 
-# Select only the polygons that intersect or lie within the junc clip area
-gdfITNLink = gdfITNLink.loc[ (gdfITNLink.geometry.intersects(studyPolygon)) | (gdfITNLink.geometry.within(studyPolygon))]
-gdfITNNode = gpd.sjoin(gdfITNNode, gdfITNLink.loc[:,['fid','geometry']], op = 'intersects', lsuffix = 'node', rsuffix = 'line')
+    ################################
+    #
+    # First clip ITN and OR networks to study area buffer, reduces size of data, makes it easier to work with
+    # Select the ITN Road Network that lies in the study area
+    #
+    # Need to use study polygon rather than network distance method because at this stage the ITN network has not been created.
+    # This is done in the script makeITNdirectional.py
+    #
+    ################################
 
-
-# Clean up
-gdfITNNode.drop(['fid_line', 'index_line'], axis = 1, inplace=True)
-gdfITNNode.drop_duplicates(inplace = True)
-gdfITNNode.rename(columns = {'fid_node':'fid'}, inplace = True)
+    # Select only the polygons that intersect or lie within the junc clip area
+    gdfITNLink = gdfITNLink.loc[ (gdfITNLink.geometry.intersects(studyPolygon)) | (gdfITNLink.geometry.within(studyPolygon))]
+    gdfITNNode = gpd.sjoin(gdfITNNode, gdfITNLink.loc[:,['fid','geometry']], op = 'intersects', lsuffix = 'node', rsuffix = 'line')
 
 
-# Repeat for Open Roads
-gdfORLink = gdfORLink.loc[ (gdfORLink.geometry.intersects(studyPolygon)) | (gdfORLink.geometry.within(studyPolygon))]
-gdfORNode = gpd.sjoin(gdfORNode, gdfORLink.loc[:,['identifier','geometry']], op = 'intersects', lsuffix = 'node', rsuffix = 'line')
-
-# Clean up
-gdfORNode.drop(['identifier_line', 'index_line'], axis = 1, inplace=True)
-gdfORNode.drop_duplicates(inplace = True)
-gdfORNode.rename(columns = {'identifier_node':'identifier'}, inplace = True)
+    # Clean up
+    gdfITNNode.drop(['fid_line', 'index_line'], axis = 1, inplace=True)
+    gdfITNNode.drop_duplicates(inplace = True)
+    gdfITNNode.rename(columns = {'fid_node':'fid'}, inplace = True)
 
 
-##############################
-#
-# Select the OS Open Road data that lies in the study area
-#
-# OS Open Road Data is used for pedestrian routing. Less detail on lanes and roundabouts so more suitable for peds
-#
-##############################
+    # Repeat for Open Roads
+    gdfORLink = gdfORLink.loc[ (gdfORLink.geometry.intersects(studyPolygon)) | (gdfORLink.geometry.within(studyPolygon))]
+    gdfORNode = gpd.sjoin(gdfORNode, gdfORLink.loc[:,['identifier','geometry']], op = 'intersects', lsuffix = 'node', rsuffix = 'line')
 
-# Get into format required for osmnx compliant graph
-gdfORLink = gdfORLink[ gdfORLink['geometry'].type == "LineString"]
-
-# Handle multi links
-gdfORLink['key'] = None
-gdfORLink['key'] = gdfORLink.groupby(['startNode','endNode'])['key'].transform(lambda df: np.arange(df.shape[0]))
-assert gdfORLink.loc[:, ['startNode','endNode', 'key']].duplicated().any() == False
-
-# Represent undirected network as directed graph
-gdfORLinkReversed = gdfORLink.copy()
-gdfORLinkReversed = gdfORLink.rename(columns = {'startNode':'endNode', 'endNode':'startNode'})
-gdfORLinkReversed['geometry'] = gdfORLinkReversed['geometry'].map(lambda g: LineString(g.coords[::-1]))
-gdfORLink = pd.concat([gdfORLink, gdfORLinkReversed])
-
-# Format for osmnx
-gdfORLink = gdfORLink.rename(columns = {"identifier": "osmid", 'startNode':'u', 'endNode':'v'})
-gdfORLink.set_index(['u','v','key'], inplace=True)
-gdfORLink['geometry'] = gdfORLink['geometry'].map(make_linestring_coords_2d)
-
-#gdfORNode["geometry"] = gdfORNode["geometry"].map(lambda g: g[0])
-gdfORNode = gdfORNode.rename(columns = {"identifier": "osmid"})
-gdfORNode['x'] = gdfORNode.loc[:, 'geometry'].map(lambda g: g.x)
-gdfORNode['y'] = gdfORNode.loc[:, 'geometry'].map(lambda g: g.y)
-gdfORNode.set_index('osmid', inplace=True)
+    # Clean up
+    gdfORNode.drop(['identifier_line', 'index_line'], axis = 1, inplace=True)
+    gdfORNode.drop_duplicates(inplace = True)
+    gdfORNode.rename(columns = {'identifier_node':'identifier'}, inplace = True)
 
 
-# Makes sense to set up graph as osmnx compliant object. But need to make sure I can keep track of edge ids
-G = osmnx.graph_from_gdfs(gdfORNode, gdfORLink, graph_attrs=None)
+    ##############################
+    #
+    # Select the OS Open Road data that lies in the study area
+    #
+    # OS Open Road Data is used for pedestrian routing. Less detail on lanes and roundabouts so more suitable for peds
+    #
+    ##############################
 
-# Find the or node nearest the centre poi
-gdfORNode['dist_to_centre'] = gdfORNode.distance(centre_poi_geom)
-nearest_node_id = gdfORNode.sort_values(by = 'dist_to_centre', ascending=True).index[0]
+    # Get into format required for osmnx compliant graph
+    gdfORLink = gdfORLink[ gdfORLink['geometry'].type == "LineString"]
 
-# Get largest connected component
-print("Selecting OR study area")
-reachable_nodes = largest_connected_component_nodes_within_dist(G, nearest_node_id, config['study_area_dist'], 'length')
+    # Handle multi links
+    gdfORLink['key'] = None
+    gdfORLink['key'] = gdfORLink.groupby(['startNode','endNode'])['key'].transform(lambda df: np.arange(df.shape[0]))
+    assert gdfORLink.loc[:, ['startNode','endNode', 'key']].duplicated().any() == False
 
-G = G.subgraph(reachable_nodes).copy()
+    # Represent undirected network as directed graph
+    gdfORLinkReversed = gdfORLink.copy()
+    gdfORLinkReversed = gdfORLink.rename(columns = {'startNode':'endNode', 'endNode':'startNode'})
+    gdfORLinkReversed['geometry'] = gdfORLinkReversed['geometry'].map(lambda g: LineString(g.coords[::-1]))
+    gdfORLink = pd.concat([gdfORLink, gdfORLinkReversed])
 
-# Remove dead ends by removing nodes with degree 1 continually  until no degree 1 nodes left
-print("Removing Dead Ends")
-U = G.to_undirected()
-dfDegree = pd.DataFrame(U.degree(), columns = ['nodeID','degree'])
-dead_end_nodes = dfDegree.loc[dfDegree['degree']==1, 'nodeID'].values
-removed_nodes = []
-while(len(dead_end_nodes)>0):
-    U.remove_nodes_from(dead_end_nodes)
-    removed_nodes = np.concatenate([removed_nodes, dead_end_nodes])
+    # Format for osmnx
+    gdfORLink = gdfORLink.rename(columns = {"identifier": "osmid", 'startNode':'u', 'endNode':'v'})
+    gdfORLink.set_index(['u','v','key'], inplace=True)
+    gdfORLink['geometry'] = gdfORLink['geometry'].map(make_linestring_coords_2d)
+
+    #gdfORNode["geometry"] = gdfORNode["geometry"].map(lambda g: g[0])
+    gdfORNode = gdfORNode.rename(columns = {"identifier": "osmid"})
+    gdfORNode['x'] = gdfORNode.loc[:, 'geometry'].map(lambda g: g.x)
+    gdfORNode['y'] = gdfORNode.loc[:, 'geometry'].map(lambda g: g.y)
+    gdfORNode.set_index('osmid', inplace=True)
+
+
+    # Makes sense to set up graph as osmnx compliant object. But need to make sure I can keep track of edge ids
+    G = osmnx.graph_from_gdfs(gdfORNode, gdfORLink, graph_attrs=None)
+
+    # Find the or node nearest the centre poi
+    gdfORNode['dist_to_centre'] = gdfORNode.distance(centre_poi_geom)
+    nearest_node_id = gdfORNode.sort_values(by = 'dist_to_centre', ascending=True).index[0]
+
+    # Get largest connected component
+    print("Selecting OR study area")
+    reachable_nodes = largest_connected_component_nodes_within_dist(G, nearest_node_id, config['study_area_dist'], 'length')
+
+    G = G.subgraph(reachable_nodes).copy()
+
+    # Remove dead ends by removing nodes with degree 1 continually  until no degree 1 nodes left
+    print("Removing Dead Ends")
+    U = G.to_undirected()
     dfDegree = pd.DataFrame(U.degree(), columns = ['nodeID','degree'])
     dead_end_nodes = dfDegree.loc[dfDegree['degree']==1, 'nodeID'].values
+    removed_nodes = []
+    while(len(dead_end_nodes)>0):
+        U.remove_nodes_from(dead_end_nodes)
+        removed_nodes = np.concatenate([removed_nodes, dead_end_nodes])
+        dfDegree = pd.DataFrame(U.degree(), columns = ['nodeID','degree'])
+        dead_end_nodes = dfDegree.loc[dfDegree['degree']==1, 'nodeID'].values
 
-G.remove_nodes_from(removed_nodes)
+    G.remove_nodes_from(removed_nodes)
 
-###################################
-#
-#
-# Now that study area network has been selected, clean network by:
-# - simplify intersections
-# - split lines based on angular deviation
-#
-####################################
+    ###################################
+    #
+    #
+    # Now that study area network has been selected, clean network by:
+    # - simplify intersections
+    # - split lines based on angular deviation
+    #
+    ####################################
 
-# simplify topology before breaking up edges based on angular deviation
-G_simp = simplify_graph(G, strict=True, remove_rings=True, rebuild_geoms = False)
+    # simplify topology before breaking up edges based on angular deviation
+    G_simp = simplify_graph(G, strict=True, remove_rings=True, rebuild_geoms = False)
 
-# simplify intersections
-G_simp = osmnx.consolidate_intersections(G_simp, tolerance=15, rebuild_graph=True, dead_ends=True, reconnect_edges=True)
+    # simplify intersections
+    G_simp = osmnx.consolidate_intersections(G_simp, tolerance=15, rebuild_graph=True, dead_ends=True, reconnect_edges=True)
 
-# At this stage reset the road link IDs. These road links correspond to strtegic routing.
-# This code keeps the old attributes but not sure that's needed.
-new_attributes = {}
-for i, edge in enumerate(G_simp.edges(data = True, keys = True)):
-    edge_id = "strategic_{}".format(i)
-    edge_attributes = {}
-    edge_attributes['strg_id'] = edge_id
-    new_attributes[edge[:-1]] = edge_attributes
-nx.set_edge_attributes(G_simp, new_attributes)
+    # At this stage reset the road link IDs. These road links correspond to strtegic routing.
+    # This code keeps the old attributes but not sure that's needed.
+    new_attributes = {}
+    for i, edge in enumerate(G_simp.edges(data = True, keys = True)):
+        edge_id = "strategic_{}".format(i)
+        edge_attributes = {}
+        edge_attributes['strg_id'] = edge_id
+        new_attributes[edge[:-1]] = edge_attributes
+    nx.set_edge_attributes(G_simp, new_attributes)
 
-# Convert to undirected for next bit of cleaning. Keep multi edge representation though. Need to think about this - but think it makes sense to retain most general structure
-U = G_simp.to_undirected()
-U_clip = U.copy()
-U_clip = break_overlapping_edges(U_clip)
-
-
-U_clip = remove_duplicated_edges(U_clip)
-
-U_clip = U_clip.to_directed()
-U_clip.graph['simplified'] = False
-U_clip = simplify_graph(U_clip, strict=True, remove_rings=True, rebuild_geoms = False)
-U_clip = U_clip.to_undirected()
-
-U_ang = break_edges_by_angle(U_clip, 10, 15, "strg_id", "strg_ang_id")
-
-# Convert graph to data frames and clean up
-gdfORNode, gdfORLink = osmnx.graph_to_gdfs(U_ang)
-
-# Reset indexes and convert ids to string data
-gdfORNode.reset_index(inplace=True)
-gdfORNode['osmid'] = gdfORNode['osmid'].map(lambda x: str(x))
-gdfORNode['node_fid'] = ["or_node_{}".format(i) for i in gdfORNode.index]
-
-node_id_dict = gdfORNode.set_index('osmid')['node_fid'].to_dict()
-
-gdfORLink.reset_index(inplace=True)
-gdfORLink['u'] = gdfORLink['u'].map(lambda x: str(x))
-gdfORLink['v'] = gdfORLink['v'].map(lambda x: str(x))
-gdfORLink['key'] = gdfORLink['key'].map(lambda x: str(x))
-
-gdfORLink = gdfORLink.reindex(columns = ['u','v','key','osmid','u_original','v_original', 'strg_id', 'sub_strg_id', 'strg_ang_id', 'geometry'])
-gdfORLink['fid'] = gdfORLink['strg_ang_id'].map(str) + "_" + gdfORLink['sub_strg_id'].map(str)
-
-# remake Link IDs for clarity
-gdfORLink['fid'] = ["or_link_{}".format(i) for i in range(gdfORLink.shape[0])]
-
-gdfORLink['MNodeFID'] = gdfORLink['u'].replace(node_id_dict)
-gdfORLink['PNodeFID'] = gdfORLink['v'].replace(node_id_dict)
-
-# For some reason the above methods for linking nodes with edges not working.
-gdfORLink = gdfORLink.reindex(columns = ['fid', 'geometry', 'u','v','key'])
-assert gdfORLink['fid'].duplicated().any() == False # Fails
-gdfORNode, gdfORLink = nodes_gdf_from_edges_gdf(gdfORLink, "MNodeFID", "PNodeFID")
+    # Convert to undirected for next bit of cleaning. Keep multi edge representation though. Need to think about this - but think it makes sense to retain most general structure
+    U = G_simp.to_undirected()
+    U_clip = U.copy()
+    U_clip = break_overlapping_edges(U_clip)
 
 
-for col in gdfORLink.columns:
-    gdfORLink.loc[gdfORLink[col].map(lambda v: isinstance(v, list)), col] = gdfORLink.loc[gdfORLink[col].map(lambda v: isinstance(v, list)), col].map(lambda v: "_".join(str(i) for i in v))
+    U_clip = remove_duplicated_edges(U_clip)
 
-for col in gdfORNode.columns:
-    gdfORNode.loc[gdfORNode[col].map(lambda v: isinstance(v, list)), col] = gdfORNode.loc[gdfORNode[col].map(lambda v: isinstance(v, list)), col].map(lambda v: "_".join(str(i) for i in v))
+    U_clip = U_clip.to_directed()
+    U_clip.graph['simplified'] = False
+    U_clip = simplify_graph(U_clip, strict=True, remove_rings=True, rebuild_geoms = False)
+    U_clip = U_clip.to_undirected()
 
-# Checking that all node ids in link data match with a node id in nodes data
-assert gdfORLink.loc[:, ['MNodeFID','PNodeFID','key']].duplicated().any() == False
-assert gdfORLink['fid'].duplicated().any() == False # Fails
-assert gdfORNode['node_fid'].duplicated().any() == False
+    U_ang = break_edges_by_angle(U_clip, 10, 15, "strg_id", "strg_ang_id")
 
-assert gdfORLink.loc[ ~(gdfORLink['MNodeFID'].isin(gdfORNode['node_fid']))].shape[0] == 0
-assert gdfORLink.loc[ ~(gdfORLink['PNodeFID'].isin(gdfORNode['node_fid']))].shape[0] == 0
+    # Convert graph to data frames and clean up
+    gdfORNode, gdfORLink = osmnx.graph_to_gdfs(U_ang)
 
-gdfORNode.crs = projectCRS
-gdfORLink.crs = projectCRS
+    # Reset indexes and convert ids to string data
+    gdfORNode.reset_index(inplace=True)
+    gdfORNode['osmid'] = gdfORNode['osmid'].map(lambda x: str(x))
+    gdfORNode['node_fid'] = ["or_node_{}".format(i) for i in gdfORNode.index]
 
-#############################
-#
-#
-# Save the processed data
-#
-#
-#############################
+    node_id_dict = gdfORNode.set_index('osmid')['node_fid'].to_dict()
 
-gdfITNLink.to_file(output_itn_link_file)
-gdfITNNode.to_file(output_itn_node_file)
+    gdfORLink.reset_index(inplace=True)
+    gdfORLink['u'] = gdfORLink['u'].map(lambda x: str(x))
+    gdfORLink['v'] = gdfORLink['v'].map(lambda x: str(x))
+    gdfORLink['key'] = gdfORLink['key'].map(lambda x: str(x))
 
-gdfORLink.to_file(output_or_link_file)
-gdfORNode.to_file(output_or_node_file)
+    gdfORLink = gdfORLink.reindex(columns = ['u','v','key','osmid','u_original','v_original', 'strg_id', 'sub_strg_id', 'strg_ang_id', 'geometry'])
+    gdfORLink['fid'] = gdfORLink['strg_ang_id'].map(str) + "_" + gdfORLink['sub_strg_id'].map(str)
+
+    # remake Link IDs for clarity
+    gdfORLink['fid'] = ["or_link_{}".format(i) for i in range(gdfORLink.shape[0])]
+
+    gdfORLink['MNodeFID'] = gdfORLink['u'].replace(node_id_dict)
+    gdfORLink['PNodeFID'] = gdfORLink['v'].replace(node_id_dict)
+
+    # For some reason the above methods for linking nodes with edges not working.
+    gdfORLink = gdfORLink.reindex(columns = ['fid', 'geometry', 'u','v','key'])
+    assert gdfORLink['fid'].duplicated().any() == False # Fails
+    gdfORNode, gdfORLink = nodes_gdf_from_edges_gdf(gdfORLink, "MNodeFID", "PNodeFID")
+
+
+    for col in gdfORLink.columns:
+        gdfORLink.loc[gdfORLink[col].map(lambda v: isinstance(v, list)), col] = gdfORLink.loc[gdfORLink[col].map(lambda v: isinstance(v, list)), col].map(lambda v: "_".join(str(i) for i in v))
+
+    for col in gdfORNode.columns:
+        gdfORNode.loc[gdfORNode[col].map(lambda v: isinstance(v, list)), col] = gdfORNode.loc[gdfORNode[col].map(lambda v: isinstance(v, list)), col].map(lambda v: "_".join(str(i) for i in v))
+
+    # Checking that all node ids in link data match with a node id in nodes data
+    assert gdfORLink.loc[:, ['MNodeFID','PNodeFID','key']].duplicated().any() == False
+    assert gdfORLink['fid'].duplicated().any() == False # Fails
+    assert gdfORNode['node_fid'].duplicated().any() == False
+
+    assert gdfORLink.loc[ ~(gdfORLink['MNodeFID'].isin(gdfORNode['node_fid']))].shape[0] == 0
+    assert gdfORLink.loc[ ~(gdfORLink['PNodeFID'].isin(gdfORNode['node_fid']))].shape[0] == 0
+
+    gdfORNode.crs = projectCRS
+    gdfORLink.crs = projectCRS
+
+    #############################
+    #
+    #
+    # Save the processed data
+    #
+    #
+    #############################
+
+    gdfITNLink.to_file(output_itn_link_file)
+    gdfITNNode.to_file(output_itn_node_file)
+
+    gdfORLink.to_file(output_or_link_file)
+    gdfORNode.to_file(output_or_node_file)
+
