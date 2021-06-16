@@ -136,6 +136,18 @@ def sample_angles(a1, a2, sample_res):
 
     return sampled_angles
 
+def angle_range(a1, a2):
+    if a1<a2:
+        r = a2-a1
+    else:
+        r = (2*np.pi-a1) + a2
+    return r
+
+def angle_range_midpoint(a1, a2):
+    r = angle_range(a1, a2)
+    middle = a1 + r/2
+    return middle
+
 def in_angle_range(ang, a1, a2):
     if a1 < a2:
         return (ang>a1) & (ang<a2)
@@ -144,23 +156,19 @@ def in_angle_range(ang, a1, a2):
         b2 = (ang>=0) & (ang<a2)
         return b1 | b2
 
-def filter_angle_range(a1, a2, angle_range):
-    if angle_range is None:
+def filter_angle_range(a1, a2, required_range):
+    if required_range is None:
         return a1, a2
 
-    angle_range = (2*np.pi) * (angle_range/360.0) # convert to radians
+    required_range = (2*np.pi) * (required_range/360.0) # convert to radians
+    r = angle_range(a1, a2)
 
-    if a1<a2:
-        r = a2-a1
-    else:
-        r = (2*np.pi-a1) + a2
-
-    if r < angle_range:
+    if r < required_range:
         return a1, a2
     
-    middle = a1 + r/2
-    a1 = middle - angle_range / 2
-    a2 = middle + angle_range / 2
+    middle = angle_range_midpoint(a1, a2)
+    a1 = middle - required_range / 2
+    a2 = middle + required_range / 2
 
     if a1 > 2*np.pi:
         a1 = a1-2*np.pi
@@ -225,7 +233,7 @@ def multiple_road_node_pedestrian_nodes_metadata(graph, gdfRoadNodes):
     dfPedNodes.index = np.arange(dfPedNodes.shape[0])
     return dfPedNodes
 
-def nearest_ray_intersection_point_between_angles(a1, a2, start_point, seriesGeoms, seriesRoadLinks, angle_range = None, ray_length = 20):
+def nearest_ray_intersection_point_between_angles(a1, a2, start_point, seriesGeoms, seriesRoadLinks, required_range = None, ray_length = 20):
 
         si_geoms = seriesGeoms.sindex
         si_road_link = seriesRoadLinks.sindex
@@ -233,7 +241,7 @@ def nearest_ray_intersection_point_between_angles(a1, a2, start_point, seriesGeo
         min_dist = sys.maxsize
         nearest_point = None
 
-        a1, a2 = filter_angle_range(a1, a2, angle_range)
+        a1, a2 = filter_angle_range(a1, a2, required_range)
 
         for l in rays_between_angles(a1, a2, start_point, ray_length = ray_length):
             close = si_geoms.intersection(l.bounds)
@@ -256,7 +264,7 @@ def nearest_ray_intersection_point_between_angles(a1, a2, start_point, seriesGeo
         
         return nearest_point
 
-def nearest_geometry_point_between_angles(a1, a2, start_point, seriesGeoms, seriesRoadLinks, angle_range = None, ray_length = 20):
+def nearest_geometry_point_between_angles(a1, a2, start_point, seriesGeoms, seriesRoadLinks, required_range = None, ray_length = 20):
         
         si_geoms = seriesGeoms.sindex
         si_road_link = seriesRoadLinks.sindex
@@ -264,7 +272,7 @@ def nearest_geometry_point_between_angles(a1, a2, start_point, seriesGeoms, seri
         min_dist = sys.maxsize
         nearest_point = None
 
-        a1, a2 = filter_angle_range(a1, a2, angle_range)
+        a1, a2 = filter_angle_range(a1, a2, required_range)
 
         processed_boundary_geom_ids = []
         for l in rays_between_angles(a1, a2, start_point, ray_length = ray_length):
@@ -308,7 +316,7 @@ def nearest_point_in_coord_sequence(coords, min_dist, start_point, a1, a2, serie
 
     return chosen_point, min_dist
 
-def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, series_coord_geoms, method = 'ray_intersection', angle_range = None, ray_length = 20, crs = projectCRS):
+def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, series_coord_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS):
     """Identify coordinates for ped nodes based on the bounday.
     """
 
@@ -332,7 +340,7 @@ def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, serie
         road_node = Point([row['juncNodeX'], row['juncNodeY']])
 
         if method == 'ray_intersection':
-            ped_node_geom = nearest_ray_intersection_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, angle_range = angle_range, ray_length = ray_length)
+            ped_node_geom = nearest_ray_intersection_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, required_range = required_range, ray_length = ray_length)
         else:
             ped_node_geom = nearest_geometry_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, angle_range = angle_range, ray_length = ray_length)
 
