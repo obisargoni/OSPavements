@@ -1,5 +1,6 @@
 import os
 import json
+import fiona
 import geopandas as gpd
 import pandas as pd
 import numpy as np
@@ -32,20 +33,15 @@ if os.path.isdir(output_directory) == False:
     os.mkdir(output_directory)
 
 
-topographic_area_dir = os.path.join(gis_data_dir, config['topographic_area_dir'])
-topographic_line_dir = os.path.join(gis_data_dir, config['topographic_line_dir'])
-
-itn_link_file = os.path.join(output_directory, config["mastermap_link_processed_file"])
-itn_node_file = os.path.join(output_directory, config["mastermap_node_processed_file"])
+topographic_file = os.path.join(gis_data_dir, config['topographic_file'])
 
 or_link_file = os.path.join(output_directory, config["openroads_link_processed_file"])
 or_node_file = os.path.join(output_directory, config["openroads_node_processed_file"])
 
+itn_link_file = os.path.join(output_directory, config["mastermap_link_processed_file"])
+itn_node_file = os.path.join(output_directory, config["mastermap_node_processed_file"])
 
 selection_layer_file = os.path.join(gis_data_dir, config['clip_file'])
-
-topographic_area_file = os.path.join(topographic_area_dir, config['topographic_area_file'])
-topographic_line_file = os.path.join(topographic_line_dir, config['topographic_line_file'])
 
 output_vehicle_file = os.path.join(output_directory, config["topo_vehicle_processed_file"])
 output_pedestrian_file = os.path.join(output_directory, config["topo_pedestrian_processed_file"])
@@ -89,8 +85,12 @@ def explode(indf, single_type = Polygon, multi_type = MultiPolygon):
 #################################
 
 # Mastermap topographic area data  - for pavement and carriageway polygons
-gdfTopoArea = gpd.read_file(topographic_area_file)
-gdfTopoArea.crs = projectCRS
+c = fiona.open(topographic_file, layer = "Topographicarea")
+gdfTopoArea = gpd.GeoDataFrame.from_features(c)
+if gdfTopoArea.crs is None:
+    gdfTopoArea.crs = projectCRS
+else:
+    assert gdfTopoArea.crs.to_string().lower() == projectCRS
 
 # Mastermap ITN data - for road network. Set columns to be those from the ITN raw data only, prevents duplicated columns when running this script multiple times
 gdfITNLink = gpd.read_file(itn_link_file)
