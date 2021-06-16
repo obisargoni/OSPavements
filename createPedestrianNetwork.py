@@ -628,16 +628,12 @@ def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
 #
 ########################################
 
-# First identify ped polygons not touching a boundary
+# Find which ped polygons touch a barrier
 gdfTopoPedBoundary = gpd.sjoin(gdfTopoPed, gdfBoundary, op = 'intersects')
+gdfTopoPed['intersectsBounds'] = gdfTopoPed['polyID'].isin(gdfTopoPedBoundary['polyID'])
 
-# HACK - need to do properly by making sure no ped islands have boundaries within them
-gdfTopoPedBoundary = gdfTopoPedBoundary.loc[ ~gdfTopoPedBoundary['polyID'].isin(config['ped_polygons_force_include'])]
-
-gdf_islands = gdfTopoPed.loc[ ~(gdfTopoPed['polyID'].isin(gdfTopoPedBoundary['polyID']))].copy()
-
-# Then form network of neighbouring ped polygons
-G_islands = neighbouring_geometries_graph(gdf_islands, id_col = 'polyID')
+# Find connected components of ped polygons
+G_islands = neighbouring_geometries_graph(gdfTopoPed, id_col = 'polyID')
 island_polys_to_remove = []
 island_polys_to_keep = []
 
@@ -645,51 +641,53 @@ island_polys_to_keep = []
 ccs = list(nx.connected_components(G_islands))
 sizes = np.array([len(cc) for cc in ccs])
 
-# If component is size 1, definitely an island
-for cc_index in np.where(sizes==1)[0]:
-    cc = ccs[cc_index]
-    for poly_id in cc:
-        island_polys_to_remove.append(poly_id)
 
-# If size > 1, only and island if not surrounded by road links
-for cc_index in np.where(sizes>1)[0]:
-    cc = ccs[cc_index]
+# Loop through connected components and identify islands
+for cc in ccs:
 
-    # get road links associated with this component
-    rls = gdf_islands.loc[gdf_islands['polyID'].isin(cc), 'roadLinkID'].to_list()
+    # Calculate fraction of cc area that doesn't touch a boundary. If fraction is ~ 0 this cc is almost certainly not an island
+    total_area = gdfTopoPed.loc[ (gdfTopoPed['polyID'].isin(cc)), 'geometry'].area.sum()
+    area_not_touching_boundary = gdfTopoPed.loc[ (gdfTopoPed['polyID'].isin(cc)) & (gdfTopoPed['intersectsBounds']==False), 'geometry'].area.sum()
+    if (total_area>500) | ( (area_not_touching_boundary / total_area) < 0.03):
+        continue
 
-    # if these road links form a loop, not an island since surrounded by road links
-    edges = gdfORLink.loc[ gdfORLink['fid'].isin(rls), ['MNodeFID','PNodeFID']].to_records(index=False)
-    us, vs = list(zip(*edges))
-    G_temp = nx.subgraph(G, us+vs)
-
-    G_temp_single = nx.Graph(G_temp)
-    assert len(G_temp.edges) == len(G_temp_single.edges)
-    
-    # If the subgraph corresponding to the road nodes around the island contains a cycle, then class island as surrounded by roads and therefore not to be excluded
-    cycles = nx.cycle_basis(G_temp_single)
-    if len(cycles)==0:
-        island_polys_to_remove += list(cc)
-    elif len(cycles)==1:
-        island_polys_to_keep += list(cc)
+    # Else, identify whether its and island
+    if len(cc) == 1:
+        for poly_id in cc:
+            island_polys_to_remove.append(poly_id)
     else:
-        print(cc)
-        island_polys_to_keep += list(cc)
+        # get road links associated with this component
+        rls = gdfTopoPed.loc[gdfTopoPed['polyID'].isin(cc), 'roadLinkID'].to_list()
+
+        # if these road links form a loop, not an island since surrounded by road links
+        edges = gdfORLink.loc[ gdfORLink['fid'].isin(rls), ['MNodeFID','PNodeFID']].to_records(index=False)
+        us, vs = list(zip(*edges))
+        G_temp = nx.subgraph(G, us+vs)
+
+        G_temp_single = nx.Graph(G_temp)
+        assert len(G_temp.edges) == len(G_temp_single.edges)
+        
+        # If the subgraph corresponding to the road nodes around the island contains a cycle, then class island as surrounded by roads and therefore not to be excluded
+        cycles = nx.cycle_basis(G_temp_single)
+        if len(cycles)==0:
+            island_polys_to_remove += list(cc)
+        elif len(cycles)==1:
+            island_polys_to_keep += list(cc)
+        else:
+            print(cc)
+            island_polys_to_keep += list(cc)
 
 
-gdf_islands_remove = gdf_islands.loc[ gdf_islands['polyID'].isin(island_polys_to_remove)].copy()
+
+gdf_islands_remove = gdfTopoPed.loc[ gdfTopoPed['polyID'].isin(island_polys_to_remove)].copy()
 gdf_islands_remove['area'] = gdf_islands_remove['geometry'].area
 
-gdf_islands_keep = gdf_islands.loc[ gdf_islands['polyID'].isin(island_polys_to_keep)].copy()
+gdf_islands_keep = gdfTopoPed.loc[ gdfTopoPed['polyID'].isin(island_polys_to_keep)].copy()
 gdf_islands_keep['area'] = gdf_islands_keep['geometry'].area
 
 gdfTopoPed = gdfTopoPed.loc[~(gdfTopoPed['polyID'].isin(island_polys_to_remove))]
 
-
-# Some islands to check
-# - ped_poly_id_2256 should not be excluded - still getting exclued but not a big issue now
-
-
+gdf_islands_remove.to_file(os.path.join(output_directory, "islands_removed.shp"))
 
 ################################
 #
