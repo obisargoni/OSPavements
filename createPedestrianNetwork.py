@@ -576,6 +576,46 @@ def validate_numbers_of_nodes_and_links(gdfRoadLinks, gdfPN, gdfPL):
 
     return problem_links
 
+def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
+
+    # Loop through road link IDs, and check pavement edges for each road link
+    for rl_id in road_link_ids:
+
+        # Get pairs of ped nodes
+        gdfPedNodesSub = gdfPN.loc[(gdfPN['v1rlID']==rl_id) | (gdfPN['v2rlID']==rl_id)]
+
+        # Should be 4 ped nodes for each road link
+        if gdfPedNodesSub.shape[0]!=4:
+            continue
+
+        # Get edges between these nodes
+        edge_ids = []
+        ped_node_pairs = itertools.combinations(gdfPedNodesSub['fid'].values, 2)
+        for ped_u, ped_v in ped_node_pairs:
+            edge_ida = "pave_link_{}_{}".format(ped_u.replace("pave_node_",""), ped_v.replace("pave_node_",""))
+            edge_idb = "pave_link_{}_{}".format(ped_v.replace("pave_node_",""), ped_u.replace("pave_node_",""))
+
+            edge_ids.append(edge_ida)
+            edge_ids.append(edge_idb)
+
+
+        gdfPedEdgesSub = gdfPL.loc[gdfPL['fid'].isin(edge_ids)]
+
+        no_cross_edge_nodes = gdfPedEdgesSub.loc[ gdfPedEdgesSub['pedRLID'].isnull(), ['MNodeFID','PNodeFID']].values
+
+        # If only one no cross link, find the other no cross link by finding which edge doesn't share coordinates
+        if len(no_cross_edge_nodes)==1:
+            no_cross_edge_nodes = set(no_cross_edge_nodes[0])
+            other_edge_nodes = gdfPedEdgesSub.loc[ ~gdfPedEdgesSub['pedRLID'].isnull(), ['MNodeFID','PNodeFID']].values
+            
+            for nodes in other_edge_nodes:
+                if len(no_cross_edge_nodes.intersection(set(nodes))) == 0:
+                    # Get the id of this row and update the pedRLID field to be blank
+                    ix = gdfPL.loc[ (gdfPL['MNodeFID']==nodes[0]) & (gdfPL['PNodeFID']==nodes[1]) ].index[0]
+                    gdfPL.loc[ix, 'pedRLID']=None
+                    gdfPL.loc[ix, 'linkType']='pavement'
+                    print("Corrected no crossing edge {}".format(gdfPL.loc[ix, 'fid']))
+    return gdfPL
 
 
 ########################################
