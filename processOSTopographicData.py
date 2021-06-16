@@ -123,14 +123,10 @@ studyPolygonWSG84 = gdfStudyAreaWSG84['geometry'].values[0]
 ################################
 
 # Select vehicle areas as those that intersect the road network
-# Results in 252 polygons, many more that previous method
 or_plus_itn_link_geometries = pd.concat([gdfORLink.loc[:, ['geometry']], gdfITNLink.loc[:,['geometry']]])
 gdfVehicle = gpd.sjoin(gdfTopoArea, or_plus_itn_link_geometries, op = 'intersects', rsuffix = 'links')
 gdfVehicle.drop('index_links', axis = 1, inplace=True)
 gdfVehicle.drop_duplicates(inplace = True)
-
-
-#gdfVehicle = gdfTopoArea.loc[ (gdfTopoArea.geometry.intersects(gdfITNLink.geometry)) | (gdfTopoArea.geometry.intersects(gdfITNNode.geometry)) ]
 
 # Select polygons with descriptive types that correspons to areas where pedestrians typically have priority
 pedestrian_descriptivs = [  '(1:Path)','(2:Path,Structure)','(2:Path,Tidal Water)','(2:Roadside,Structure)','(1:Roadside)',
@@ -496,31 +492,3 @@ gdfPerimiter.to_file(output_line_file)
 gdfITNLink.to_file(itn_link_file)
 gdfORLink.to_file(or_link_file)
 
-'''
-# Now densify the clipped linestrings
-def densify(l, d):
-    length = l.length
-
-    if l.length < d:
-        return l
-
-    # Find minimum number of points needed between start and end to achieve max separation of d
-    np = int(length / d)
-    dp = length / (np + 1) # total length divided by number of gaps
-
-    points = []
-    points.append(l.coords[0])
-    dtot = dp
-
-    # number of points to add in is np
-    for i in range(np):
-        points.append(l.interpolate(dp*i))
-
-    # Add final point
-    points.append(l.coords[-1])
-    
-    # Return densified linestring
-    return LineString(points)
-
-
-'''
