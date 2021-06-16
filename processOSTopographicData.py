@@ -130,8 +130,9 @@ gdfVehicle.drop_duplicates(inplace = True)
 
 # Select polygons with descriptive types that correspons to areas where pedestrians typically have priority
 pedestrian_descriptivs = [  '(1:Path)','(2:Path,Structure)','(2:Path,Tidal Water)','(2:Roadside,Structure)','(1:Roadside)',
-                            'Path','Path,Structure', 'Structure,Path', 'Path,Tidal Water','Roadside,Structure','Roadside', 'Roadside,Structure', 'Path,Roadside', 'Roadside,Path']
-gdfPedestrian = gdfTopoArea.loc[gdfTopoArea['descriptiv'].isin(pedestrian_descriptivs)]
+                            'Path','Path,Structure', 'Structure,Path', 'Path,Tidal Water','Roadside,Structure','Roadside', 'Roadside,Structure', 
+                            'Path,Roadside', 'Roadside,Path', 'General Surface,Roadside,Structure']
+gdfPedestrian = gdfTopoArea.loc[gdfTopoArea['descriptivegroup'].isin(pedestrian_descriptivs)]
 
 # Filter pedestrian polygons to just be those within the study area or that touch a vehicle polygon
 gdfPedestrianA = gdfPedestrian.loc[ (gdfPedestrian.geometry.intersects(studyPolygon)) | (gdfPedestrian.geometry.within(studyPolygon))]
@@ -201,8 +202,8 @@ for i, row in gdfTopoAreaExcluded.iterrows():
             break
 gdfTopoAreaCandidates = gdfTopoAreaExcluded.loc[candidate_indices]
 
-gdfVehicleAdditions  = gdfTopoAreaCandidates.loc[ gdfTopoAreaCandidates['descriptiv'] == "(1:Road Or Track)"]
-gdfPedestrianAdditions  = gdfTopoAreaCandidates.loc[ gdfTopoAreaCandidates['descriptiv'].isin(pedestrian_descriptivs)]
+gdfVehicleAdditions  = gdfTopoAreaCandidates.loc[ gdfTopoAreaCandidates['descriptivegroup'] == "(1:Road Or Track)"]
+gdfPedestrianAdditions  = gdfTopoAreaCandidates.loc[ gdfTopoAreaCandidates['descriptivegroup'].isin(pedestrian_descriptivs)]
 
 gdfVehicleAdditions[priority_column] = 'vehicle'
 gdfPedestrianAdditions[priority_column] = 'pedestrian'
