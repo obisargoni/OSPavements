@@ -371,8 +371,10 @@ def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, serie
 
         if method == 'ray_intersection':
             ped_node_geom = nearest_ray_intersection_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, required_range = required_range, ray_length = ray_length)
+        elif method == 'default':
+            ped_node_geom = point_located_between_angles(a1, a2, road_node, series_road_links, d = 5)
         else:
-            ped_node_geom = nearest_geometry_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, angle_range = angle_range, ray_length = ray_length)
+            ped_node_geom = None
 
         index.append(ix)
         geoms.append(ped_node_geom)
