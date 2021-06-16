@@ -522,6 +522,8 @@ def validate_numbers_of_nodes_and_links(gdfRoadLinks, gdfPN, gdfPL):
     4 crossing links.
     """
 
+    problem_links = {"missing_nodes":[], "missing_links":[]}
+
     for rl_id in gdfRoadLinks['fid'].values:
 
         # Get pairs of ped nodes
@@ -533,6 +535,7 @@ def validate_numbers_of_nodes_and_links(gdfRoadLinks, gdfPN, gdfPL):
             print(rl_id)
             print(gdfPedNodesSub)
             print("\n")
+            problem_links["missing_nodes"].append(rl_id)
             continue
 
         # Get edges between these nodes
@@ -554,6 +557,8 @@ def validate_numbers_of_nodes_and_links(gdfRoadLinks, gdfPN, gdfPL):
             print("Road link does not have 2 non-crossing edges")
             print(rl_id)
             print("\n")
+            problem_links["missing_links"].append(rl_id)
+            continue
 
         nodesa = set(gdfNoCross.loc[:, ["MNodeFID", "PNodeFID"]].values[0])
         nodesb = set(gdfNoCross.loc[:, ["MNodeFID", "PNodeFID"]].values[1])
@@ -561,11 +566,15 @@ def validate_numbers_of_nodes_and_links(gdfRoadLinks, gdfPN, gdfPL):
             print("Non-corssing links overlap")
             print(rl_id)
             print("\n")
+            problem_links["missing_links"].append(rl_id)
 
         if gdfCross.shape[0] != 4:
             print("Road link does not have 4 crossing ped links")
             print(rl_id)
             print("\n")
+            problem_links["missing_links"].append(rl_id)
+
+    return problem_links
 
 
 
