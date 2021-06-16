@@ -186,7 +186,7 @@ def _is_point_in_nodes(p, nodes):
     for v in nodes.values():
         if (p.x == v['x']) & (p.y == v['y']):
             # This coordiante has already been recorded as a new node
-            point_in_node = False
+            point_in_node = True
             break
     return point_in_node
 
