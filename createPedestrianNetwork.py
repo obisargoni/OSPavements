@@ -475,9 +475,6 @@ def connect_ped_nodes(gdfPN, gdfRoadLink, road_graph):
 
         # Should be 4 ped nodes for each road link
         if gdfPedNodesSub.shape[0]!=4:
-            print(rl_id)
-            print(gdfPedNodesSub)
-            print("\n")
             continue
 
         ped_node_pairs = itertools.combinations(gdfPedNodesSub['fid'].values, 2)
