@@ -807,19 +807,25 @@ node_pairs = pd.concat([node_pairs_a, node_pairs_b])
 assert node_pairs.duplicated().any() == False
 
 
-validate_numbers_of_nodes_and_links(gdfORLink, gdfPedNodes, gdfPedLinks)
+# Check that linkType matches with pedRLID
+assert gdfPedLinks.loc[ (gdfPedLinks['linkType']!='pavement') & (gdfPedLinks['pedRLID'].isnull())].shape[0] == 0
+assert gdfPedLinks.loc[ (gdfPedLinks['linkType']=='pavement'), 'pedRLID'].isnull().all()
+
+
+problem_links = validate_numbers_of_nodes_and_links(gdfORLink, gdfPedNodes, gdfPedLinks)
 gdfPedNodes.to_file(output_ped_nodes_file)
 gdfPedLinks.to_file(output_ped_links_file)
 
 
+# Check whether all cases of links not having 4 nodes are due to being dead ends
+or_edges = gdfORLink.loc[:, ['PNodeFID','MNodeFID']].values
+G = nx.Graph()
+G.add_edges_from(or_edges)
+dfDeg = pd.DataFrame(G.degree()).rename(columns = {0:'node_fid',1:'degree'})
 
+dead_ends = dfDeg.loc[ dfDeg['degree']==1,'node_fid'].values
 
-'''
-gdfPedNodes = gdfPedNodes.loc[ gdfPedNodes['geometry'].type != 'MultiPoint']
-
-# Create id for each ped node
-gdfPedNodes['fid'] = ['pave_node_{}'.format(i) for i in gdfPedNodes.index]
-gdfPedNodes.crs = projectCRS
-
-gdfPedNodes.to_file(output_ped_nodes_file)
-'''
+for rl_id in problem_links['missing_nodes']:
+    u,v = gdfORLink.loc[ gdfORLink['fid']==rl_id, ['PNodeFID','MNodeFID']].values[0]
+    if not ( (u in dead_ends) | (v in dead_ends)):
+        print("OR link not dead end and is missing nodes:{}\n".format(rl_id))
