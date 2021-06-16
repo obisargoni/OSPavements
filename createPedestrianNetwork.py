@@ -491,18 +491,20 @@ def connect_ped_nodes(gdfPN, gdfRoadLink, road_graph):
             l = LineString([g_u, g_v])
             edge_id = "pave_link_{}_{}".format(ped_u.replace("pave_node_",""), ped_v.replace("pave_node_",""))
 
-            ped_edge = {'MNodeFID':ped_u, 'PNodeFID':ped_v, 'pedRLID':None, 'pedRoadID':None, 'fid':edge_id, 'geometry':l}
-            intersect_check = gdfLinkSub['geometry'].map(lambda g: g.intersects(l))
+            ped_edge = {'MNodeFID':ped_u, 'PNodeFID':ped_v, 'pedRLID':None, 'linkType':'pavement', 'pedRoadID':None, 'fid':edge_id, 'geometry':l}
 
             # Check whether links crosses road or not
-            if intersect_check.any():
-                ped_edge['pedRLID'] = " ".join(gdfLinkSub.loc[intersect_check, 'fid'])
-            elif j_u==j_v:
-                # Check for intersection using merged linestrings
-                ml = MultiLineString(gdfLinkSub.geometry.values)
-                roads_g = ops.linemerge(ml)
-                if roads_g.intersects(l):
-                    ped_edge['pedRLID'] = rl_id
+            if j_u==j_v:
+                # Nodes belong to same junction node, must require crossing to move between them
+                ped_edge['pedRLID'] = rl_id
+                ped_edge['linkType'] = 'direct_cross'
+            else:
+                intersect_check = gdfLinkSub['geometry'].map(lambda g: g.intersects(l))
+                if intersect_check.any():
+                    ped_edge['pedRLID'] = " ".join(gdfLinkSub.loc[intersect_check, 'fid'])
+
+                    # Since in this case j_u!=j_v link type is diagonal
+                    ped_edge['linkType'] = 'diag_cross'
 
             # Could also check which ped polys edge intersects but this isn't necessary
 
