@@ -258,6 +258,11 @@ def break_edges_by_angle(G, angle_threshold, min_link_length, id_col, new_id_col
 
         if len(g.coords) == 2:
             e_data[new_id_col] = e_data[id_col]
+            u_data = nodes[e[0]]
+            v_data = nodes[e[1]]
+
+            H.add_node(e[0], **u_data) # If node has already been added the graph will be unchanged
+            H.add_node(e[1], **v_data) # If node has already been added the graph will be unchanged
             H.add_edge(e[0], e[1], key = e[2], **e_data)
         else:
             # Break geometry into component edges
