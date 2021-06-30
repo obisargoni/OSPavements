@@ -121,23 +121,43 @@ gdfODs = gpd.read_file(pedestrian_od_file)
 #
 #################
 
+# Set distribution to draw flows from
+
+# Constants related to simulation run time and frequency of pedestrian addition
+T = 900
+v = 1/10
+
+# Choose distribution
+def get_flow(g, num_ods, total_in_flow, T=T, v = v, distribution = 'uniform'):
+
+    if distribution == 'uniform':
+        f = total_in_flow / (T * v * num_ods)
+        return f 
+    else:
+        return 0
+
 # Initialise OD flows matrix
 flows = np.zeros([len(ODs), len(ODs)])
 ODids = gdfODs['fid'].to_list()
 dfFlows = pd.DataFrame(flows, columns = ODids, index = ODids)
-Oids = ODids[:len(Os)]
-Dids = ODids[len(Os):]
-# Set random flows between origins and destinations
-for o in Oids:
-    for d in Dids:
-        if (o == d):
-            continue
 
-        f_ij = np.random.rand()
-        dfFlows.loc[o, d] = f_ij
+for d in ODids:
 
-        f_ji = np.random.rand()
-        dfFlows.loc[d, o] = f_ji
+
+    # Calculate the flows from all other os to this d
+    d_in_flow = gdfODs.loc[gdfODs['fid']==d, 'inFlow'].values[0]
+
+    if d_in_flow == 0:
+        continue
+
+    Os = dfFlows[d].index
+    nOs = len(Os) - 1
+    flows = gdfODs.set_index('fid').loc[ Os, 'geometry'].map(lambda g: get_flow(g, nOs, d_in_flow, T = T, v = v, distribution = 'uniform'))
+
+    dfFlows[d] = flows
+
+    # No self flows
+    dfFlows.loc[d, d] = 0
 
 
 dfFlows.to_csv(pedestrian_od_flows, index=False)
