@@ -104,7 +104,8 @@ while len(Ds)<nDs:
         Ds.append(pavement_location)
 
 ODs = Os+Ds
-data = {'fid': ['od_{}'.format(i) for i in range(len(ODs))], 'geometry':ODs}
+inputFlows = [460] + [0]*len(Ds)
+data = {'fid': ['od_{}'.format(i) for i in range(len(ODs))], 'inFlow':inputFlows, 'geometry':ODs}
 gdfODs = gpd.GeoDataFrame(data, geometry = 'geometry')
 gdfODs.crs = projectCRS
 
