@@ -3,6 +3,7 @@ import numpy as np
 import os
 import geopandas as gpd
 import json
+import fiona
 
 from shapely.geometry import Point
 
@@ -61,7 +62,12 @@ def get_random_point_in_polygon(poly):
 #################
 
 # Select Origin pavement nodes based on POIs
-gdf_pois = gpd.read_file(poi_file)
+c = fiona.open(poi_file)
+gdf_pois = gpd.GeoDataFrame.from_features(c)
+if gdf_pois.crs is None:
+    gdf_pois.crs = projectCRS
+else:
+    assert gdf_pois.crs.to_string().lower() == projectCRS
 gdfPaveNode = gpd.read_file(pavement_nodes_file)
 gdfTopoPed = gpd.read_file(pavement_polygons_file)
 gdfORLink = gpd.read_file(or_links_file)
