@@ -108,7 +108,7 @@ gdf_itn['first_coords_match_minus_node'] = gdf_itn['line_first_coord'] == gdf_it
 gdf_itn['last_coords_match_plus_node'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
 
 assert gdf_itn['first_coords_match_minus_node'].all() == True
-gdf_itn['last_coords_match_plus_node'].all() == True
+assert gdf_itn['last_coords_match_plus_node'].all() == True
 
 gdf_itn = None
 
@@ -175,22 +175,23 @@ assert dfRLNode['MinusNodeFID'].isnull().any() == False
 dfRLNode = pd.merge(dfRLNode, dfRRI, left_on = "RoadLinkFID", right_on = "DirectedLinkFID", how = "left", indicator=True)
 dfRLNode.drop("_merge", axis = 1, inplace = True)
 
-# Merge with link weight and id data
-dfRLNode = pd.merge(dfRLNode, gdf_itn_link.reindex(columns = ['fid','weight']), left_on = "RoadLinkFID", right_on = "fid", how = "outer", indicator = True)
+# Merge with itn link length using the undirected id
+dfRLNode = pd.merge(dfRLNode, gdf_itn_link.reindex(columns = ['fid_undir','length']), left_on = "RoadLinkFID", right_on = "fid_undir", how = "outer", indicator = True)
+assert dfRLNode.loc[ dfRLNode['_merge'] != 'both'].shape[0] == 0
+dfRLNode.drop("_merge", axis = 1, inplace = True)
 
 # Now build the edge list
 init_data = {'start_node':[], 'end_node':[]}
 dfEdgeList = pd.DataFrame(init_data)
-dfRLNode.drop("_merge", axis = 1, inplace = True)
 
 # df1 are teh links that go from minus node to plus node, orientation = +
-df1 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'] == "+"].reindex(columns = ['MinusNodeFID','PlusNodeFID', "RoadLinkFID", "weight"])
+df1 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'] == "+"].reindex(columns = ['MinusNodeFID','PlusNodeFID', "RoadLinkFID", "length"])
 # df2 are the nodes that go from plus to minus
-df2 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'] == "-"].reindex(columns = ['PlusNodeFID','MinusNodeFID', "RoadLinkFID", "weight"])
+df2 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'] == "-"].reindex(columns = ['PlusNodeFID','MinusNodeFID', "RoadLinkFID", "length"])
 # df3 are the non directed link, part 1
-df3 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'].isnull()].reindex(columns = ['MinusNodeFID','PlusNodeFID', "RoadLinkFID", "weight"])
+df3 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'].isnull()].reindex(columns = ['MinusNodeFID','PlusNodeFID', "RoadLinkFID", "length"])
 # df4 are the non directed links part 2
-df4 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'].isnull()].reindex(columns = ['PlusNodeFID','MinusNodeFID', "RoadLinkFID", "weight"])
+df4 = dfRLNode.loc[dfRLNode['DirectedLinkOrientation'].isnull()].reindex(columns = ['PlusNodeFID','MinusNodeFID', "RoadLinkFID", "length"])
 
 df1.rename(columns = {'MinusNodeFID':'start_node', 'PlusNodeFID':'end_node'}, inplace=True)
 df2.rename(columns = {'PlusNodeFID':'start_node', 'MinusNodeFID':'end_node'}, inplace=True)
@@ -198,11 +199,11 @@ df3.rename(columns = {'PlusNodeFID':'start_node', 'MinusNodeFID':'end_node'}, in
 df4.rename(columns = {'MinusNodeFID':'start_node', 'PlusNodeFID':'end_node'}, inplace=True)
 
 dfEdgeList = pd.concat([df1,df2,df3,df4], join = "outer")
-dfEdgeList = dfEdgeList.reindex(columns=['start_node','end_node', 'RoadLinkFID','weight'])
+dfEdgeList = dfEdgeList.reindex(columns=['start_node','end_node', 'RoadLinkFID','length'])
 
 
 # Now create the network
-graphRL = nx.from_pandas_edgelist(dfEdgeList, source='start_node', target = 'end_node', edge_attr = ['RoadLinkFID','weight'], create_using=nx.DiGraph())
+graphRL = nx.from_pandas_edgelist(dfEdgeList, source='start_node', target = 'end_node', edge_attr = ['RoadLinkFID','length'], create_using=nx.DiGraph())
 assert graphRL.is_directed()
 
 #############################
@@ -213,4 +214,4 @@ assert graphRL.is_directed()
 #
 #############################
 gdf_itn_link.to_file(output_shapefile)
-dfEdgeList.to_csv(output_itn_edge_list)
+dfEdgeList.to_csv(output_itn_edge_list, index=False)
