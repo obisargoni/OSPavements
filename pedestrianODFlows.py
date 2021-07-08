@@ -17,6 +17,8 @@ projectCRS = "epsg:27700"
 with open("config.json") as f:
     config = json.load(f)
 
+np.random.seed(config['flows_seed'])
+
 # Proportion of pavement polygons to locate an OD on.
 prop_random_ODs = 1
 min_distance_of_ped_od_to_road_link = 30
