@@ -25,8 +25,9 @@ import re
 
 projectCRS = {'init' :'epsg:27700'}
 
-
-with open("config.json") as f:
+abs_path = os.path.abspath(__file__)
+this_dir = os.path.dirname(abs_path)
+with open(os.path.join(this_dir, "config.json")) as f:
     config = json.load(f)
 
 
