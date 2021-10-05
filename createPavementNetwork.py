@@ -59,6 +59,12 @@ edges = gdfORLink.loc[:,['MNodeFID','PNodeFID', 'fid_dict']].to_records(index=Fa
 G.add_edges_from(edges)
 
 
+# Parameters that control area searched for suitable pavement node locations
+default_angle_range = 90
+backup_angle_range = None
+default_ray_length = 20
+
+
 #################################
 #
 #
@@ -619,214 +625,215 @@ def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
     return gdfPL
 
 
-########################################
-#
-#
-# Filter out traffic islands
-#
-# don't want pavement nodes located on traffic islands so need to filter these out.
-#
-#
-########################################
+def run():
+    ########################################
+    #
+    #
+    # Filter out traffic islands
+    #
+    # don't want pavement nodes located on traffic islands so need to filter these out.
+    #
+    #
+    ########################################
 
-# Find which ped polygons touch a barrier
-gdfTopoPedBoundary = gpd.sjoin(gdfTopoPed, gdfBoundary, op = 'intersects')
-gdfTopoPed['intersectsBounds'] = gdfTopoPed['polyID'].isin(gdfTopoPedBoundary['polyID'])
+    # Find which ped polygons touch a barrier
+    gdfTopoPedBoundary = gpd.sjoin(gdfTopoPed, gdfBoundary, op = 'intersects')
+    gdfTopoPed['intersectsBounds'] = gdfTopoPed['polyID'].isin(gdfTopoPedBoundary['polyID'])
 
-# Find connected components of ped polygons
-G_islands = neighbouring_geometries_graph(gdfTopoPed, id_col = 'polyID')
-island_polys_to_remove = []
-island_polys_to_keep = []
+    # Find connected components of ped polygons
+    G_islands = neighbouring_geometries_graph(gdfTopoPed, id_col = 'polyID')
+    island_polys_to_remove = []
+    island_polys_to_keep = []
 
-# Find connected components
-ccs = list(nx.connected_components(G_islands))
-sizes = np.array([len(cc) for cc in ccs])
+    # Find connected components
+    ccs = list(nx.connected_components(G_islands))
+    sizes = np.array([len(cc) for cc in ccs])
 
 
-# Loop through connected components and identify islands
-for cc in ccs:
+    # Loop through connected components and identify islands
+    for cc in ccs:
 
-    # Calculate fraction of cc area that doesn't touch a boundary. If fraction is ~ 0 this cc is almost certainly not an island
-    total_area = gdfTopoPed.loc[ (gdfTopoPed['polyID'].isin(cc)), 'geometry'].area.sum()
-    area_not_touching_boundary = gdfTopoPed.loc[ (gdfTopoPed['polyID'].isin(cc)) & (gdfTopoPed['intersectsBounds']==False), 'geometry'].area.sum()
-    if (total_area>500) | ( (area_not_touching_boundary / total_area) < 0.03):
-        continue
+        # Calculate fraction of cc area that doesn't touch a boundary. If fraction is ~ 0 this cc is almost certainly not an island
+        total_area = gdfTopoPed.loc[ (gdfTopoPed['polyID'].isin(cc)), 'geometry'].area.sum()
+        area_not_touching_boundary = gdfTopoPed.loc[ (gdfTopoPed['polyID'].isin(cc)) & (gdfTopoPed['intersectsBounds']==False), 'geometry'].area.sum()
+        if (total_area>500) | ( (area_not_touching_boundary / total_area) < 0.03):
+            continue
 
-    # Else, identify whether its and island
-    if len(cc) == 1:
-        for poly_id in cc:
-            island_polys_to_remove.append(poly_id)
-    else:
-        # get road links associated with this component
-        rls = gdfTopoPed.loc[gdfTopoPed['polyID'].isin(cc), 'roadLinkID'].to_list()
-
-        # if these road links form a loop, not an island since surrounded by road links
-        edges = gdfORLink.loc[ gdfORLink['fid'].isin(rls), ['MNodeFID','PNodeFID']].to_records(index=False)
-        us, vs = list(zip(*edges))
-        G_temp = nx.subgraph(G, us+vs)
-
-        G_temp_single = nx.Graph(G_temp)
-        assert len(G_temp.edges) == len(G_temp_single.edges)
-        
-        # If the subgraph corresponding to the road nodes around the island contains a cycle, then class island as surrounded by roads and therefore not to be excluded
-        cycles = nx.cycle_basis(G_temp_single)
-        if len(cycles)==0:
-            island_polys_to_remove += list(cc)
-        elif len(cycles)==1:
-            island_polys_to_keep += list(cc)
+        # Else, identify whether its and island
+        if len(cc) == 1:
+            for poly_id in cc:
+                island_polys_to_remove.append(poly_id)
         else:
-            print(cc)
-            island_polys_to_keep += list(cc)
+            # get road links associated with this component
+            rls = gdfTopoPed.loc[gdfTopoPed['polyID'].isin(cc), 'roadLinkID'].to_list()
+
+            # if these road links form a loop, not an island since surrounded by road links
+            edges = gdfORLink.loc[ gdfORLink['fid'].isin(rls), ['MNodeFID','PNodeFID']].to_records(index=False)
+            us, vs = list(zip(*edges))
+            G_temp = nx.subgraph(G, us+vs)
+
+            G_temp_single = nx.Graph(G_temp)
+            assert len(G_temp.edges) == len(G_temp_single.edges)
+            
+            # If the subgraph corresponding to the road nodes around the island contains a cycle, then class island as surrounded by roads and therefore not to be excluded
+            cycles = nx.cycle_basis(G_temp_single)
+            if len(cycles)==0:
+                island_polys_to_remove += list(cc)
+            elif len(cycles)==1:
+                island_polys_to_keep += list(cc)
+            else:
+                print(cc)
+                island_polys_to_keep += list(cc)
 
 
 
-gdf_islands_remove = gdfTopoPed.loc[ gdfTopoPed['polyID'].isin(island_polys_to_remove)].copy()
-gdf_islands_remove['area'] = gdf_islands_remove['geometry'].area
+    gdf_islands_remove = gdfTopoPed.loc[ gdfTopoPed['polyID'].isin(island_polys_to_remove)].copy()
+    gdf_islands_remove['area'] = gdf_islands_remove['geometry'].area
 
-gdf_islands_keep = gdfTopoPed.loc[ gdfTopoPed['polyID'].isin(island_polys_to_keep)].copy()
-gdf_islands_keep['area'] = gdf_islands_keep['geometry'].area
+    gdf_islands_keep = gdfTopoPed.loc[ gdfTopoPed['polyID'].isin(island_polys_to_keep)].copy()
+    gdf_islands_keep['area'] = gdf_islands_keep['geometry'].area
 
-gdfTopoPed = gdfTopoPed.loc[~(gdfTopoPed['polyID'].isin(island_polys_to_remove))]
+    gdfTopoPed = gdfTopoPed.loc[~(gdfTopoPed['polyID'].isin(island_polys_to_remove))]
 
-gdf_islands_remove.to_file(os.path.join(output_directory, "islands_removed.shp"))
+    gdf_islands_remove.to_file(os.path.join(output_directory, "islands_removed.shp"))
 
-################################
-#
-#
-# Produce nodes metadata
-#
-# For every node in the road network, create pedestrian nodes in the regions between the links in that network
-#
-################################
+    ################################
+    #
+    #
+    # Produce nodes metadata
+    #
+    # For every node in the road network, create pedestrian nodes in the regions between the links in that network
+    #
+    ################################
 
-# Node metadata
-dfPedNodes = multiple_road_node_pedestrian_nodes_metadata(G, gdfORNode)
+    # Node metadata
+    dfPedNodes = multiple_road_node_pedestrian_nodes_metadata(G, gdfORNode)
 
 
-##################################
-#
-#
-# Assign coordinates to nodes
-#
-# Do I need to consider a connected component of walkable surfaces?
-#
-#
-##################################
+    ##################################
+    #
+    #
+    # Assign coordinates to nodes
+    #
+    # Do I need to consider a connected component of walkable surfaces?
+    #
+    #
+    ##################################
 
-# Recreate index - required for spatial indexing to work
-gdfTopoPed.index = np.arange(gdfTopoPed.shape[0])
-gdfBoundary.index = np.arange(gdfBoundary.shape[0])
+    # Recreate index - required for spatial indexing to work
+    gdfTopoPed.index = np.arange(gdfTopoPed.shape[0])
+    gdfBoundary.index = np.arange(gdfBoundary.shape[0])
 
-# Buffer the boundary so that nodes are located slightly away from walls
-boundary_geoms = gdfBoundary['geometry']
-pavement_geoms = gdfTopoPed['geometry']
-island_geoms = gdf_islands_remove['geometry']
+    # Buffer the boundary so that nodes are located slightly away from walls
+    boundary_geoms = gdfBoundary['geometry']
+    pavement_geoms = gdfTopoPed['geometry']
+    island_geoms = gdf_islands_remove['geometry']
 
-boundary_geoms.index = np.arange(len(boundary_geoms))
-pavement_geoms.index = np.arange(len(pavement_geoms))
-island_geoms.index = np.arange(len(island_geoms))
+    boundary_geoms.index = np.arange(len(boundary_geoms))
+    pavement_geoms.index = np.arange(len(pavement_geoms))
+    island_geoms.index = np.arange(len(island_geoms))
 
-dfPedNodes['boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, boundary_geoms, method = 'ray_intersection', required_range = 90, ray_length = 20, crs = projectCRS)
-dfPedNodes['pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, pavement_geoms, method = 'ray_intersection', required_range = 90, ray_length = 20, crs = projectCRS)
+    dfPedNodes['boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, boundary_geoms, method = 'ray_intersection', required_range = default_angle_range, ray_length = default_ray_length, crs = projectCRS)
+    dfPedNodes['pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfORLink, pavement_geoms, method = 'ray_intersection', required_range = default_angle_range, ray_length = default_ray_length, crs = projectCRS)
 
-# Now choose final node
-dfPedNodes['geometry'] = dfPedNodes.apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
+    # Now choose final node
+    dfPedNodes['geometry'] = dfPedNodes.apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
 
-# Run checks
-n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
-print("Number of missing nodes: {}".format(n_missing_nodes))
-
-if n_missing_nodes > 0:
-    print("Finding missing nodes by removing angular range constraint")
-    missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
-
-    dfPedNodes.loc[missing_index, 'boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, boundary_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS)
-    dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, pavement_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS)
-    dfPedNodes.loc[missing_index, 'geometry'] = dfPedNodes.loc[missing_index].apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
-
-    
+    # Run checks
     n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
     print("Number of missing nodes: {}".format(n_missing_nodes))
 
-if n_missing_nodes > 0:
-    print("Finding missing nodes by including islands")
-    missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
+    if n_missing_nodes > 0:
+        print("Finding missing nodes by removing angular range constraint")
+        missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
 
-    dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, island_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS)
-    dfPedNodes.loc[missing_index, 'geometry'] = dfPedNodes.loc[missing_index].apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
+        dfPedNodes.loc[missing_index, 'boundary_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, boundary_geoms, method = 'ray_intersection', required_range = backup_angle_range, ray_length = default_ray_length, crs = projectCRS)
+        dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, pavement_geoms, method = 'ray_intersection', required_range = backup_angle_range, ray_length = default_ray_length, crs = projectCRS)
+        dfPedNodes.loc[missing_index, 'geometry'] = dfPedNodes.loc[missing_index].apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
 
-    n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
-    print("Number of missing nodes: {}".format(n_missing_nodes))
+        
+        n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
+        print("Number of missing nodes: {}".format(n_missing_nodes))
 
-if n_missing_nodes > 0:
-    print("Finding missing nodes by assigning default coordiantes")
-    missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
+    if n_missing_nodes > 0:
+        print("Finding missing nodes by including islands")
+        missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
 
-    dfPedNodes.loc[missing_index, 'geometry'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, None, method = 'default', required_range = None, ray_length = 20, crs = projectCRS)
+        dfPedNodes.loc[missing_index, 'pavement_ped_node'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, island_geoms, method = 'ray_intersection', required_range = backup_angle_range, ray_length = default_ray_length, crs = projectCRS)
+        dfPedNodes.loc[missing_index, 'geometry'] = dfPedNodes.loc[missing_index].apply(choose_ped_node, axis=1, pave_node_col = 'pavement_ped_node', boundary_node_col = 'boundary_ped_node', road_node_x_col = 'juncNodeX', road_node_y_col = 'juncNodeY')
 
-    n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
-    print("Number of missing nodes: {}".format(n_missing_nodes))
+        n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
+        print("Number of missing nodes: {}".format(n_missing_nodes))
 
-gdfPedNodes = gpd.GeoDataFrame(dfPedNodes, geometry = 'geometry', crs = projectCRS)
-# check for duplicates?
+    if n_missing_nodes > 0:
+        print("Finding missing nodes by assigning default coordiantes")
+        missing_index = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].index
 
-gdfPedNodes['fid'] = ["pave_node_{}".format(i) for i in range(gdfPedNodes.shape[0])]
-gdfPedNodes.drop(['boundary_ped_node','pavement_ped_node'],axis=1, inplace=True)
+        dfPedNodes.loc[missing_index, 'geometry'] = assign_boundary_coordinates_to_ped_nodes(dfPedNodes.loc[missing_index], gdfORLink, None, method = 'default', required_range = backup_angle_range, ray_length = default_ray_length, crs = projectCRS)
 
+        n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
+        print("Number of missing nodes: {}".format(n_missing_nodes))
 
-###################################
-#
-#
-# Join ped nodes to create ped network
-#
-#
-###################################
+    gdfPedNodes = gpd.GeoDataFrame(dfPedNodes, geometry = 'geometry', crs = projectCRS)
+    # check for duplicates?
 
-# Previously wrote separate functions for connecting nodes at opposite ends of a link and nodes around a junction
-
-dfPedLinks = connect_ped_nodes(gdfPedNodes, gdfORLink, G)
-gdfPedLinks = gpd.GeoDataFrame(dfPedLinks, geometry = 'geometry', crs = projectCRS)
-
-# Drop duplicated edges - don't expect any multi edges so drop duplicated fids since this implies duplicated edge between nodes
-gdfPedLinks = gdfPedLinks.drop_duplicates(subset = ['fid'])
-
-# Repair cases where a pavement links gets classified as a road crosisng link bc it intersects a road link
-gdfPedLinks = repair_non_crossing_links(gdfORLink['fid'].unique(), gdfPedNodes, gdfPedLinks)
-
-###################################
-#
-#
-# Validate and save
-#
-#
-###################################
-
-# Check there are no duplicated edges by checking for duplicated node pairs
-node_pairs_a = gdfPedLinks.loc[:, ['MNodeFID', 'PNodeFID']]
-node_pairs_b = gdfPedLinks.loc[:, ['PNodeFID', 'MNodeFID']].rename(columns = {'PNodeFID':'MNodeFID', 'MNodeFID':'PNodeFID'})
-node_pairs = pd.concat([node_pairs_a, node_pairs_b])
-assert node_pairs.duplicated().any() == False
+    gdfPedNodes['fid'] = ["pave_node_{}".format(i) for i in range(gdfPedNodes.shape[0])]
+    gdfPedNodes.drop(['boundary_ped_node','pavement_ped_node'],axis=1, inplace=True)
 
 
-# Check that linkType matches with pedRLID
-assert gdfPedLinks.loc[ (gdfPedLinks['linkType']!='pavement') & (gdfPedLinks['pedRLID'].isnull())].shape[0] == 0
-assert gdfPedLinks.loc[ (gdfPedLinks['linkType']=='pavement'), 'pedRLID'].isnull().all()
+    ###################################
+    #
+    #
+    # Join ped nodes to create ped network
+    #
+    #
+    ###################################
+
+    # Previously wrote separate functions for connecting nodes at opposite ends of a link and nodes around a junction
+
+    dfPedLinks = connect_ped_nodes(gdfPedNodes, gdfORLink, G)
+    gdfPedLinks = gpd.GeoDataFrame(dfPedLinks, geometry = 'geometry', crs = projectCRS)
+
+    # Drop duplicated edges - don't expect any multi edges so drop duplicated fids since this implies duplicated edge between nodes
+    gdfPedLinks = gdfPedLinks.drop_duplicates(subset = ['fid'])
+
+    # Repair cases where a pavement links gets classified as a road crosisng link bc it intersects a road link
+    gdfPedLinks = repair_non_crossing_links(gdfORLink['fid'].unique(), gdfPedNodes, gdfPedLinks)
+
+    ###################################
+    #
+    #
+    # Validate and save
+    #
+    #
+    ###################################
+
+    # Check there are no duplicated edges by checking for duplicated node pairs
+    node_pairs_a = gdfPedLinks.loc[:, ['MNodeFID', 'PNodeFID']]
+    node_pairs_b = gdfPedLinks.loc[:, ['PNodeFID', 'MNodeFID']].rename(columns = {'PNodeFID':'MNodeFID', 'MNodeFID':'PNodeFID'})
+    node_pairs = pd.concat([node_pairs_a, node_pairs_b])
+    assert node_pairs.duplicated().any() == False
 
 
-problem_links = validate_numbers_of_nodes_and_links(gdfORLink, gdfPedNodes, gdfPedLinks)
-gdfPedNodes.to_file(output_ped_nodes_file)
-gdfPedLinks.to_file(output_ped_links_file)
+    # Check that linkType matches with pedRLID
+    assert gdfPedLinks.loc[ (gdfPedLinks['linkType']!='pavement') & (gdfPedLinks['pedRLID'].isnull())].shape[0] == 0
+    assert gdfPedLinks.loc[ (gdfPedLinks['linkType']=='pavement'), 'pedRLID'].isnull().all()
 
 
-# Check whether all cases of links not having 4 nodes are due to being dead ends
-or_edges = gdfORLink.loc[:, ['PNodeFID','MNodeFID']].values
-G = nx.Graph()
-G.add_edges_from(or_edges)
-dfDeg = pd.DataFrame(G.degree()).rename(columns = {0:'node_fid',1:'degree'})
+    problem_links = validate_numbers_of_nodes_and_links(gdfORLink, gdfPedNodes, gdfPedLinks)
+    gdfPedNodes.to_file(output_ped_nodes_file)
+    gdfPedLinks.to_file(output_ped_links_file)
 
-dead_ends = dfDeg.loc[ dfDeg['degree']==1,'node_fid'].values
 
-for rl_id in problem_links['missing_nodes']:
-    u,v = gdfORLink.loc[ gdfORLink['fid']==rl_id, ['PNodeFID','MNodeFID']].values[0]
-    if not ( (u in dead_ends) | (v in dead_ends)):
-        print("OR link not dead end and is missing nodes:{}\n".format(rl_id))
+    # Check whether all cases of links not having 4 nodes are due to being dead ends
+    or_edges = gdfORLink.loc[:, ['PNodeFID','MNodeFID']].values
+    G = nx.Graph()
+    G.add_edges_from(or_edges)
+    dfDeg = pd.DataFrame(G.degree()).rename(columns = {0:'node_fid',1:'degree'})
+
+    dead_ends = dfDeg.loc[ dfDeg['degree']==1,'node_fid'].values
+
+    for rl_id in problem_links['missing_nodes']:
+        u,v = gdfORLink.loc[ gdfORLink['fid']==rl_id, ['PNodeFID','MNodeFID']].values[0]
+        if not ( (u in dead_ends) | (v in dead_ends)):
+            print("OR link not dead end and is missing nodes:{}\n".format(rl_id))
