@@ -887,7 +887,7 @@ def run():
     gdfORLink['v'] = gdfORLink['v'].map(lambda x: str(x))
     gdfORLink['key'] = gdfORLink['key'].map(lambda x: str(x))
 
-    gdfORLink = gdfORLink.reindex(columns = ['u','v','key','osmid','u_original','v_original', 'strg_id', 'sub_strg_id', 'strg_ang_id', 'geometry'])
+    gdfORLink = gdfORLink.reindex(columns = ['u','v','key','osmid','u_original','v_original', 'strg_id', 'sub_strg_id', 'strg_ang_id', 'class', 'geometry'])
     gdfORLink['fid'] = gdfORLink['strg_ang_id'].map(str) + "_" + gdfORLink['sub_strg_id'].map(str)
 
     # remake Link IDs for clarity
@@ -897,7 +897,7 @@ def run():
     gdfORLink['PNodeFID'] = gdfORLink['v'].replace(node_id_dict)
 
     # For some reason the above methods for linking nodes with edges not working.
-    gdfORLink = gdfORLink.reindex(columns = ['fid', 'geometry', 'u','v','key'])
+    gdfORLink = gdfORLink.reindex(columns = ['fid', 'geometry', 'u','v','key', 'class'])
     assert gdfORLink['fid'].duplicated().any() == False # Fails
     gdfORNode, gdfORLink = nodes_gdf_from_edges_gdf(gdfORLink, "MNodeFID", "PNodeFID")
 
