@@ -16,6 +16,17 @@ import createPavementNetwork as cpn
 #################################
 #
 #
+# Ideas for additional figures
+#
+#
+# Dealing with isalnds
+# Node placement when there isn't pavement nearby
+#
+#################################
+
+#################################
+#
+#
 # Globals
 #
 #
