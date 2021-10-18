@@ -13,13 +13,16 @@ This gets the directoinality information for road links and road nodes for all o
 
 Selects the road network data that lies in the study area. Cleans the Open Roads data to simplify the lines to have minimal angular deviation along a line.
 
-3. makeITNdirectional.py
+3. processOSTopographicData.py
+
+Given a polygon covering the study area, this extracts the road links and nodes, pedestrian and vehicles topographic space, and lines obstructing pedestrian movement that should be included to model that study area.
+
+4. makeITNdirectional.py
 
 This uses the direction information extracted with the first script and edits the portion of the road network selected in the section so that it represents a directed road network.
 
-4. processOSTopographicData.py
+Needs to happen after processOSTopographicData because that scripts adds in the lookup to OR road link ID.
 
-Given a polygon covering the study area, this extracts the road links and nodes, pedestrian and vehicles topographic space, and lines obstructing pedestrian movement that should be included to model that study area.
 
 It also processes and cleans this data, for example linking road links (both open road and ITN) with vehicle and pedestrian space
 
