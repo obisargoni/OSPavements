@@ -112,5 +112,18 @@ dfFlows = dfFlows.set_index(['O','D']).unstack().fillna(0)
 # Get rid of multiindex
 dfFlows.columns = [c[1] for c in dfFlows.columns]
 
+
+# Limit flows to produce know expected number of vehicle additions per time step
+n_additions_per_origin = 0.5 # Expectation of 0.5 cars created from each origin each time vehicles are added to simulation
+nOs = dfFlows.shape[0]
+o_flow_sums = dfFlows.sum(axis=1)
+dfFlowsNorm = dfFlows.copy()
+for i in range(nOs):
+	osum = o_flow_sums.iloc[i]
+	if osum==0:
+		dfFlowsNorm.iloc[i] = dfFlowsNorm.iloc[i]
+	else:
+		dfFlowsNorm.iloc[i] = (dfFlowsNorm.iloc[i] / o_flow_sums.iloc[i]) * n_additions_per_origin
+
 # Save this dataframe and use as the flows matrix
-dfFlows.to_csv(output_flows_path, index=False, header=True)
+dfFlowsNorm.to_csv(output_flows_path, index=False, header=True)
