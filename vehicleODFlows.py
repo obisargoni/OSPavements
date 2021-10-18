@@ -23,6 +23,8 @@ import json
 with open("config.json") as f:
     config = json.load(f)
 
+np.random.seed(config['flows_seed'])
+
 gis_data_dir = config['gis_data_dir']
 processed_gis_dir = os.path.join(gis_data_dir, "processed_gis_data")
 route_info_dir = os.path.join(gis_data_dir, "itn_route_info")
@@ -90,7 +92,7 @@ for o in ODfids:
 	for d in ODfids:
 		if (o == d):
 			continue
-		elif (o in [excludeFIDs]) | (d in excludeFIDs):
+		elif (o in excludeFIDs) | (d in excludeFIDs):
 			# Record which can't be
 			dfPossibleFlows = dfPossibleFlows.append({'O':o,'D':d,'flowPossible':0}, ignore_index=True)
 		else:
