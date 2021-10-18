@@ -21,14 +21,14 @@ np.random.seed(config['flows_seed'])
 
 # Proportion of pavement polygons to locate an OD on.
 prop_random_ODs = 1
-min_distance_of_ped_od_to_road_link = 30
+min_distance_of_ped_od_to_ped_road_link = 15
 
 gis_data_dir = config['gis_data_dir']
 processed_gis_dir = os.path.join(gis_data_dir, "processed_gis_data")
 
 pavement_nodes_file = os.path.join(processed_gis_dir, config["pavement_nodes_file"])
+pavement_links_file = os.path.join(processed_gis_dir, config["pavement_links_file"])
 pavement_polygons_file = os.path.join(processed_gis_dir, config["topo_pedestrian_processed_file"])
-or_links_file = os.path.join(processed_gis_dir, config["openroads_link_processed_file"])
 
 pedestrian_od_flows = os.path.join(processed_gis_dir, config['pedestrian_od_flows'])
 pedestrian_od_file = os.path.join(processed_gis_dir, config['pedestrian_od_file'])
@@ -70,9 +70,10 @@ if gdf_pois.crs is None:
     gdf_pois.crs = projectCRS
 else:
     assert gdf_pois.crs.to_string().lower() == projectCRS
+
 gdfPaveNode = gpd.read_file(pavement_nodes_file)
+gdfPaveLink = gpd.read_file(pavement_links_file)
 gdfTopoPed = gpd.read_file(pavement_polygons_file)
-gdfORLink = gpd.read_file(or_links_file)
 
 centre_poi_geom = gdf_pois.loc[ gdf_pois['ref_no'] == centre_poi_ref, 'geometry'].values[0]
 gdfTopoPed['dist_to_centre'] = gdfTopoPed['geometry'].distance(centre_poi_geom)
@@ -81,7 +82,9 @@ centre_pavement_geometry = gdfTopoPed.sort_values(by='dist_to_centre', ascending
 Os = []
 Os.append(get_random_point_in_polygon(centre_pavement_geometry))
 
-# Select destination nodes randomly by finding random points in polygons, after filtering out polygons that don't have pavement nodes on them.
+# Select destination nodes randomly by finding random points in polygons, after filtering out polygons that don't have pavement nodes on them,
+# and that don't correspond to OR road links that are listed in the config file as links to exclude (these tend to be links at the edge of the study area where the data is a bit dodgy)
+gdfTopoPed = gdfTopoPed.loc[ ~gdfTopoPed['roadLinkID'].isin(config['or_links_exclude_ped_ods'])]
 gdfTopoPed = gpd.sjoin(gdfTopoPed, gdfPaveNode, op='intersects')
 candidates = gdfTopoPed.loc[ gdfTopoPed['dist_to_centre'] > dist_from_centre_threshold, 'polyID'].values
 
@@ -93,16 +96,16 @@ while len(Ds)<nDs:
     ri = np.random.randint(0, gdfTopoPed.shape[0])
     pavement_geom = gdfTopoPed.iloc[ri]['geometry']
     pavement_location = get_random_point_in_polygon(pavement_geom)
-    d = min(gdfORLink.distance(pavement_location))
+    d = min(gdfPaveLink.distance(pavement_location))
 
     # filter out any locations that are too far from a road link, but only try a few times before skipping this geometry
     i = 0
-    while (d>min_distance_of_ped_od_to_road_link) & (i<5):
+    while (d>min_distance_of_ped_od_to_ped_road_link) & (i<5):
         pavement_location = get_random_point_in_polygon(pavement_geom)
-        d = min(gdfORLink.distance(pavement_location))
+        d = min(gdfPaveLink.distance(pavement_location))
         i+=1
 
-    if d<min_distance_of_ped_od_to_road_link:
+    if d<min_distance_of_ped_od_to_ped_road_link:
         Ds.append(pavement_location)
 
 ODs = Os+Ds
