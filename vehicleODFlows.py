@@ -114,7 +114,7 @@ dfFlows.columns = [c[1] for c in dfFlows.columns]
 
 
 # Limit flows to produce know expected number of vehicle additions per time step
-n_additions_per_origin = 0.5 # Expectation of 0.5 cars created from each origin each time vehicles are added to simulation
+n_additions_per_origin = 0.25 # Expectation of 0.25 cars created from each origin each time vehicles are added to simulation
 nOs = dfFlows.shape[0]
 o_flow_sums = dfFlows.sum(axis=1)
 dfFlowsNorm = dfFlows.copy()
