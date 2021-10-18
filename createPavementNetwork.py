@@ -625,7 +625,7 @@ def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
     return gdfPL
 
 
-def run():
+def run(gdfTopoPed = gdfTopoPed, gdfTopoVeh = gdfTopoVeh, gdfORNode = gdfORNode, gdfORLink = gdfORLink, gdfBoundary = gdfBoundary, G=G):
     ########################################
     #
     #
