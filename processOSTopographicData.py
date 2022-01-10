@@ -132,7 +132,8 @@ gdfVehicle.drop_duplicates(inplace = True)
 pedestrian_descriptivs = [  '(1:Path)','(2:Path,Structure)','(2:Path,Tidal Water)','(2:Roadside,Structure)','(1:Roadside)',
                             'Path','Path,Structure', 'Structure,Path', 'Path,Tidal Water','Roadside,Structure','Roadside', 'Roadside,Structure', 
                             'Path,Roadside', 'Roadside,Path', 'General Surface,Roadside,Structure']
-gdfPedestrian = gdfTopoArea.loc[gdfTopoArea['descriptivegroup'].isin(pedestrian_descriptivs)]
+gdfPedestrian = gdfTopoArea.loc[(   gdfTopoArea['descriptivegroup'].isin(pedestrian_descriptivs) | 
+                                    gdfTopoArea['fid'].isin(config["manual_pedestrian_polygon_fids"]))]
 
 # Filter pedestrian polygons to just be those within the study area or that touch a vehicle polygon
 gdfPedestrianA = gdfPedestrian.loc[ (gdfPedestrian.geometry.intersects(studyPolygon)) | (gdfPedestrian.geometry.within(studyPolygon))]
