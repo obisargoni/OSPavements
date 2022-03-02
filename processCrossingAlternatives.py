@@ -32,16 +32,14 @@ output_directory = os.path.join(gis_data_dir, "processed_gis_data")
 
 
 gdfORLink = gpd.read_file(os.path.join(output_directory, config["openroads_link_processed_file"]))
-gdfORNode = gpd.read_file(os.path.join(output_directory, config["openroads_node_processed_file"]))
 gdfORLink.crs = projectCRS
-gdfORNode.crs = projectCRS
 
 gdfPaveNode = gpd.read_file(os.path.join(output_directory, config["pavement_nodes_file"]))
 gdfPaveLink = gpd.read_file(os.path.join(output_directory, config["pavement_links_file"]))
 gdfPaveNode.crs = projectCRS
 gdfPaveLink.crs = projectCRS
 
-output_crossings_path = os.path.join(output_directory, 'CrossingAlternatives.shp')
+tolerance = 0.3
 
 # Load the Open Roads road network as a nx graph
 G = nx.MultiGraph()
@@ -73,12 +71,10 @@ def angle_range(a1, a2):
     return r
 
 
-def unsignalised_crossing_node_from_junction_node(dfJunctionNodes):
+def unsignalised_crossing_node_from_junction_node(dfJunctionNodes, tolerance=0.3):
 	'''Identifies the pairs of pavement nodes whose connecting link can be treated as an
 	unsignalised crossing, assuming that pedestrians have right of way when walking in a straight line.
 	'''
-
-	tolerance = 0.3
 	data = {'u':[], 'v':[], 'geometry':[], 'roadLinkID':[]}
 	
 	is_four_way = dfJunctionNodes.shape[0]==4
@@ -132,10 +128,31 @@ junction_nodes = dfDeg.loc[ dfDeg['degree']>2, 'node']
 # Select the pavement nodes that are associated with these junction nodes
 gdfPaveNode = gdfPaveNode.loc[ gdfPaveNode['juncNodeID'].isin(junction_nodes)]
 
+dict_ccs = {}
+for tolerance in np.linspace(0.1,0.9,5):
 
-dfUC = gdfPaveNode.groupby('juncNodeID').apply(unsignalised_crossing_node_from_junction_node)
-gdfUC = gpd.GeoDataFrame(dfUC, geometry = 'geometry', crs = projectCRS)
-gdfUC['type'] = 'unsignalised'
-gdfUC['sigPhases'] = None
-gdfUC['phaseDurs'] = None
-gdfUC.to_file(output_crossings_path)
+	tolerance = np.round(tolerance, 1)
+
+	dfUC = gdfPaveNode.groupby('juncNodeID').apply(unsignalised_crossing_node_from_junction_node, tolerance=tolerance)
+
+	# Check whether the pedestrian network remains a single connected component with crossing links without crossing infrastructure removed
+	roads_with_crossings = dfUC['roadLinkID'].values
+	index_crossing_links_no_crossings = gdfPaveLink.loc[ gdfPaveLink['pedRLID'].notnull() & ~gdfPaveLink['pedRLID'].isin(roads_with_crossings)].index
+	gdfPaveLinkNoInformal = gdfPaveLink.drop(index_crossing_links_no_crossings, axis=0)
+
+	edges = gdfPaveLinkNoInformal.loc[:, ['MNodeFID', 'PNodeFID', 'fid', 'geometry']]
+	g_pavement = nx.from_pandas_edgelist(edges, 'MNodeFID', 'PNodeFID', edge_attr=['fid'], create_using=nx.Graph)
+	ccs = list(nx.connected_components(g_pavement))
+	nccs = len(ccs)
+
+	dict_ccs[tolerance] = ccs
+	print(tolerance, nccs)
+
+	gdfUC = gpd.GeoDataFrame(dfUC, geometry = 'geometry', crs = projectCRS)
+
+	gdfUC['type'] = 'unsignalised'
+	gdfUC['sigPhases'] = None
+	gdfUC['phaseDurs'] = None
+
+	output_crossings_path = os.path.join(output_directory, 'CrossingAlternativesTollerance{}.shp'.format(str(tolerance).replace(".","")))
+	gdfUC.to_file(output_crossings_path)
