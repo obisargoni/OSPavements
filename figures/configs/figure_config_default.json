@@ -1,0 +1,38 @@
+{
+  "pavement": {"color":"#999999", "linewidth":2},
+  "carriageway": {"color":"#4c4c4c", "linewidth":2},
+
+  "road_link": {"color":"#eaeaea", "path_color":"#ffbd16", "linewidth":1, "pathwidth":3},
+  "road_node": {"color":"#eaeaea", "path_color":"#ffbd16", "linewidth":1, "pathwidth":3},
+  
+  "pavement_link": {"color":"#4c8695", "path_color":"#ffbd16", "linewidth":1, "pathwidth":2},
+  "pavement_node": {"color":"#4c8695", "path_color":"#ffbd16", "linewidth":1, "pathwidth":2},
+  
+  "rays": {"color":"#000080", "linewidth":2},
+  "od": {"color":"#ff3021", "linewidth":3},
+
+  "line_lowlight_color": "#4e72d3",
+  "line_highlight_color": "#ffbd16",
+
+  "tactical1_config": { "or_node_ids": ["node_id_71"], "road_link_id":"9745D155-3C95-4CCD-BC65-0908D57FA83A_0", "od": [4, 9], "pave_links_exclude":["pave_link_82_92"],
+                        "study_area_ids":["DC163277-D563-4621-8F7B-F9C9B52AA9A7_0",
+                                          "762DB27A-3B61-4EAA-B63E-6F1B0BD80D98_0",
+                                          "91031412-C224-41F3-9F68-B7707209B6FA_0",
+                                          "9745D155-3C95-4CCD-BC65-0908D57FA83A_0",
+                                          "56CF7BBA-28E4-4ACA-9F58-E096E88094FB_0",
+                                          "A8675945-DE94-4E22-9905-B0623A326221_0",
+                                          "F4C0B1FB-762C-4492-BB0D-673CC4950CBE_0",
+                                          "2D1C8837-55A8-4E27-B173-385801E6CCB2_0"], 
+                        "sp":[  "9745D155-3C95-4CCD-BC65-0908D57FA83A_0",
+                                "A8675945-DE94-4E22-9905-B0623A326221_0",
+                                "DC163277-D563-4621-8F7B-F9C9B52AA9A7_0"], "ntl20":2, "ntl90":2, 
+                        "tp20_1":["pave_link_89_90",
+                                  "pave_link_89_106",
+                                  "pave_link_90_111"],
+                        "tp20_2":["pave_link_111_112",
+                                  "pave_link_112_124"],
+                        "tp90_1":["pave_link_106_91",
+                                  "pave_link_112_124",
+                                  "pave_link_91_112"]
+                      }
+}

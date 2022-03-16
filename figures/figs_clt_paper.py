@@ -13,6 +13,9 @@ from shapely.geometry import Point
 sys.path.append("..")
 import createPavementNetwork as cpn
 
+with open("figure_config.json") as f:
+    fig_config = json.load(f)
+
 #################################
 #
 #
@@ -110,7 +113,7 @@ def figure_pavement_nodes_for_single_road_link(road_link_id, gdfPedNodes, gdfORL
     node_ids = gdfORLink.loc[ gdfORLink['fid']==road_link_id, ['MNodeFID','PNodeFID']].values[0]
 
     # Select the pavement nodes
-    gdfPedNodesPlot = gdfPedNodes.loc[ (gdfPedNodes['juncNodeID'].isin(node_ids)) ( (gdfPedNodes['v1rlID']==road_link_id) | (gdfPedNodes['v2rlID']==road_link_id) )]
+    gdfPedNodesPlot = gdfPedNodes.loc[ (gdfPedNodes['juncNodeID'].isin(node_ids)) & ( (gdfPedNodes['v1rlID']==road_link_id) | (gdfPedNodes['v2rlID']==road_link_id) )]
 
     # Get corresponding road links ids
     rls = pd.concat([gdfPedNodesPlot['v1rlID'], gdfPedNodesPlot['v2rlID']]).unique()
@@ -120,6 +123,7 @@ def figure_pavement_nodes_for_single_road_link(road_link_id, gdfPedNodes, gdfORL
     gdfTopoPed = gdfTopoPed.loc[ gdfTopoPed['roadLinkID'].isin(rls)]
 
     # Get road links to plot for this node
+    '''
     for i, row in gdfPedNodesPlot.head(1).iterrows():
         # Get road link angles
         a1 = row['a1']
@@ -136,13 +140,13 @@ def figure_pavement_nodes_for_single_road_link(road_link_id, gdfPedNodes, gdfORL
         gdfRNPlot = gdfORNode.loc[ gdfORNode['node_fid']==node_id]
 
         gdfPedNodes = gdfPedNodes.loc[ (gdfPedNodes['v1rlID'] == row['v1rlID']) & (gdfPedNodes['v2rlID'] == row['v2rlID']) ]
-
-        plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = gdfRLPlot, road_node = gdfRNPlot, rays = gdfRays, pavement_link = None, pavement_node = gdfPedNodes)
+    '''
+    plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = None, road_node = None, rays = None, pavement_link = None, pavement_node = gdfPedNodes)
 
         # Set axis limits
-        xmin, ymin, xmax, ymax = gdfRLPlot.total_bounds
-        ax.set_xlim(xmin-5, xmax-10)
-        ax.set_ylim(ymin+20, ymax+5)
+    xmin, ymin, xmax, ymax = gdfTopoPed.total_bounds
+    ax.set_xlim(xmin-5, xmax-10)
+    ax.set_ylim(ymin+20, ymax+5)
 
     ax.set_axis_off()
     return f
@@ -167,14 +171,14 @@ def figure_connected_pavement_nodes(road_link_id, gdfTopoVeh, gdfTopoPed, gdfORN
     # Select the pavement links and nodes
     gdfPedNodes = gdfPedNodes.loc[ (gdfPedNodes['v1rlID']==road_link_id) | (gdfPedNodes['v2rlID']==road_link_id) ]
     gdfPedLinks = gdfPedLinks.loc[ gdfPedLinks['MNodeFID'].isin(gdfPedNodes['fid']) & gdfPedLinks['PNodeFID'].isin(gdfPedNodes['fid']) ]
-    gdfPedLinksDiag = gdfPedLinks.loc[ gdfPedLinks['linkType']=='diag_cross']
-    gdfPedLinksConst = gdfPedLinks.loc[ gdfPedLinks['linkType']!='diag_cross']
+    #gdfPedLinksDiag = gdfPedLinks.loc[ gdfPedLinks['linkType']=='diag_cross']
+    #gdfPedLinksConst = gdfPedLinks.loc[ gdfPedLinks['linkType']!='diag_cross']
 
     # Plot these layers
-    ax = plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = gdfORLink, road_node = gdfORNode, pavement_link = gdfPedLinksConst, pavement_node = gdfPedNodes)
+    ax = plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = gdfORLink, road_node = gdfORNode, pavement_link = gdfPedLinks, pavement_node = gdfPedNodes)
 
     # plot diagonal crossing links in another colour
-    gdfPedLinksDiag.plot(ax=ax, edgecolor = config['pavement_link']['color'], linewidth=config['pavement_link']['linewidth'], linestyle = '--', zorder=7)
+    #gdfPedLinksDiag.plot(ax=ax, edgecolor = config['pavement_link']['color'], linewidth=config['pavement_link']['linewidth'], linestyle = '--', zorder=7)
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfORLink.loc[ gdfORLink['fid']==road_link_id].total_bounds
@@ -263,35 +267,50 @@ def figure_road_network(gdfORLink, config = fig_config):
 
     return f
 
-def figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, config = fig_config):
+def figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config):
     '''Function for creating figures illustrating tactical path finding
     '''
 
+    # Initialise figure
+    f, ax = plt.subplots(1,1, figsize = (10,10))
+
     # Get study area gdfs
     gdfORLinkSA = gdfORLink.loc[ gdfORLink['fid'].isin(study_area_rls)]
-    study_area_nodes = np.concat( [gdfORLinkSA['MNodeFID'].values, gdfORLinkSA['PNodeFID'].values] )
-    gdfORNodeSA = gdfORNode.loc[ gdfORNode['fid'].isin(study_area_nodes)]
+    study_area_nodes = np.concatenate( [gdfORLinkSA['MNodeFID'].values, gdfORLinkSA['PNodeFID'].values] )
+    gdfORNodeSA = gdfORNode.loc[ gdfORNode['node_fid'].isin(study_area_nodes)]
     gdfTopoPedSA = gdfTopoPed.loc[gdfTopoPed['roadLinkID'].isin(study_area_rls)]
     gdfTopoVehSA = gdfTopoVeh.loc[gdfTopoVeh['roadLinkID'].isin(study_area_rls)]
-    gdfPedNodesSA = gdfPedNodes.loc[ gdfPedNodes['juncNodeID'].isin(study_area_nodes)]
-    gdfPedLinksSA = gdfPedLinks.loc[ (gdfPedLinks['MNodeFID'].isin(gdfPedNodesSA['fid']) & gdfPedLinks['PNodeFID'].isin(gdfPedNodesSA['fid']) )]
-
+    
+    gdfPedNodesSA = gdfPedNodes.loc[ (gdfPedNodes['v1rlID'].isin(study_area_rls) | gdfPedNodes['v2rlID'].isin(study_area_rls) )]
+    gdfPedLinksSA = gdfPedLinks.loc[ (gdfPedLinks['MNodeFID'].isin(gdfPedNodesSA['fid']) & gdfPedLinks['PNodeFID'].isin(gdfPedNodesSA['fid']) & ~gdfPedLinks['fid'].isin(ped_links_exclude))]
 
     # Plot study area layers
-    ax = plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = gdfORLink, road_node = gdfORNode, pavement_link = gdfPedLinksConst, pavement_node = gdfPedNodes)
+    ax = plot_layers(ax, config, pavement = gdfTopoPedSA, carriageway = gdfTopoVehSA, road_link = None, road_node = None, pavement_link = gdfPedLinksSA, pavement_node = gdfPedNodesSA)
 
-    # Plot route layers
+    # Select route layers
+    gdfspph = gdfORLink.loc[ gdfORLink['fid'].isin( sp[:n_horizon_links] )]
+    gdfspph_ = gdfORLink.loc[ gdfORLink['fid'].isin( sp[n_horizon_links:] )]
 
-    # plot diagonal crossing links in another colour
-    gdfPedLinksDiag.plot(ax=ax, edgecolor = config['pavement_link']['color'], linewidth=config['pavement_link']['linewidth'], linestyle = '--', zorder=7)
+    gdftp = gdfPedLinks.loc[ gdfPedLinks['fid'].isin(tp)]
+    gdftp_nodes = gdfPedNodes.loc[ (gdfPedNodes['fid'].isin(gdftp['MNodeFID']) | (gdfPedNodes['fid'].isin(gdftp['PNodeFID'])))]
+
+    gdfods = gdfPedODs.loc[ gdfPedODs['fid'].isin( [origin_id, dest_id])]
+
+    # plot these additional layers
+    gdfspph.plot(ax=ax, edgecolor = config['road_link']['color'], linewidth=config['road_link']['pathwidth'], linestyle = '-', zorder=7)
+    gdfspph_.plot(ax=ax, edgecolor = config['road_link']['color'], linewidth=config['road_link']['pathwidth'], linestyle = '--', zorder=7)
+
+    gdftp.plot(ax=ax, edgecolor = config['pavement_link']['path_color'], linewidth=config['pavement_link']['pathwidth'], linestyle = '-', zorder=8)
+    gdftp_nodes.plot(ax=ax, edgecolor = config['pavement_node']['path_color'], facecolor = config['pavement_node']['path_color'], linewidth=config['pavement_node']['pathwidth'], zorder=8)
+
+    gdfods.plot(ax=ax, edgecolor = config['od']['color'], facecolor = config['od']['color'], linewidth=config['od']['linewidth'], zorder=9)
 
     # Set limits
-    xmin, ymin, xmax, ymax = gdfORLink.loc[ gdfORLink['fid']==road_link_id].total_bounds
+    xmin, ymin, xmax, ymax = gdfORLinkSA.total_bounds
     ax.set_xlim(xmin-3, xmax+3)
     ax.set_ylim(ymin-7.5, ymax+7.5)
 
     ax.set_axis_off()
-
 
     return f
 
@@ -303,14 +322,14 @@ def figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links
 #
 #################################
 
-with open("figure_config.json") as f:
-    fig_config = json.load(f)
-
-img_dir = "."
+img_dir = "./clt_images/new"
 output_rays_node_fig_path = os.path.join(img_dir, "pavement_node_rays.png")
 output_pavement_nodes_fig_path = os.path.join(img_dir, "pavement_nodes.png")
 output_pavement_links_fig_path = os.path.join(img_dir, "pavement_links.png")
-output_residential_network_fig_path = os.path.join(img_dir, "road_network_residential.png")
+
+output_tp1_ph20_mincross = os.path.join(img_dir, "route_tactical_1_ph20_mincross_trip2.png")
+output_tp2_ph20_mincross = os.path.join(img_dir, "route_tactical_2_ph20_mincross_trip2.png")
+output_tp1_ph90_mincross = os.path.join(img_dir, "route_tactical_1_ph90_mincross_trip2.png")
 
 # class_rename_dict is taken from the 'pavenet_centrality.py' script
 class_rename_dict = {   'Unknown':'Unclassified',
@@ -371,18 +390,17 @@ gdfBoundaryPlot = cpn.gdfBoundary.loc[ cpn.gdfBoundary['geometry'].intersects(gd
 gdfPedNodes = gpd.read_file(cpn.output_ped_nodes_file)
 gdfPedLinks = gpd.read_file(cpn.output_ped_links_file)
 
+gdfPedODs = gpd.read_file( os.path.join(cpn.output_directory, cpn.config['pedestrian_od_file']) )
+
 # set which road node to illustrate getting ped nodes for
-node_id = fig_config['pavenet_config']['or_node_ids'][0]
+node_id = fig_config['tactical1_config']['or_node_ids'][0]
 road_link_id = gdfPedNodes.loc[ gdfPedNodes['juncNodeID']==node_id, 'v1rlID'].values[0]
 
-road_link_id = "9745D155-3C95-4CCD-BC65-0908D57FA83A_0"
+road_link_id = fig_config['tactical1_config']['road_link_id']
 
 #
 # Figures showing pavement network creation
 #
-f = figure_pavement_nodes_for_single_road_node(node_id, gdfPedNodes, cpn.gdfORLink, cpn.gdfORNode, cpn.gdfTopoVeh, cpn.gdfTopoPed, config = fig_config)
-f.show()
-
 f_road_pave_nodes = figure_pavement_nodes_for_single_road_link(road_link_id, gdfPedNodes, cpn.gdfORLink, cpn.gdfORNode, cpn.gdfTopoVeh, cpn.gdfTopoPed, config = fig_config)
 f_road_pave_nodes.savefig(output_pavement_nodes_fig_path)
 
@@ -392,11 +410,24 @@ f_node_joined.savefig(output_pavement_links_fig_path)
 #
 # Figures showing effect of planning horizon on routing
 #
-f_tactical1_ph20_mincross = figure_tactical_path(origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, config = fig_config)
+study_areas_rls = fig_config['tactical1_config']['study_area_ids']
+origin_id, dest_id = fig_config['tactical1_config']['od']
+ped_links_exclude = fig_config['tactical1_config']['pave_links_exclude']
+sp = fig_config['tactical1_config']['sp']
 
-f_road = figure_road_network(cpn.gdfORLink)
-f_road.show()
+n_horizon_links = fig_config['tactical1_config']['ntl20']
+tp = fig_config['tactical1_config']['tp20_1']
 
+f_tactical1_ph20_mincross = figure_tactical_path(study_areas_rls, origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical1_ph20_mincross.savefig(output_tp1_ph20_mincross)
 
-f.savefig(output_rays_node_fig_path)
-f_road.savefig(output_residential_network_fig_path)
+tp = fig_config['tactical1_config']['tp20_2']
+
+f_tactical2_ph20_mincross = figure_tactical_path(study_areas_rls, origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical2_ph20_mincross.savefig(output_tp2_ph20_mincross)
+
+n_horizon_links = fig_config['tactical1_config']['ntl90']
+tp = fig_config['tactical1_config']['tp90_1']
+
+f_tactical1_ph90_mincross = figure_tactical_path(study_areas_rls, origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical1_ph90_mincross.savefig(output_tp1_ph90_mincross)
