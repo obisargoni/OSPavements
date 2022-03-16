@@ -9,7 +9,7 @@
   "pavement_node": {"color":"#4c8695", "path_color":"#ffbd16", "linewidth":1, "pathwidth":2},
   
   "rays": {"color":"#000080", "linewidth":2},
-  "od": {"color":"#ff3021", "linewidth":3},
+  "od": {"color":"#202020", "linewidth":3},
 
   "line_lowlight_color": "#4e72d3",
   "line_highlight_color": "#ffbd16",
@@ -25,14 +25,53 @@
                                           "2D1C8837-55A8-4E27-B173-385801E6CCB2_0"], 
                         "sp":[  "9745D155-3C95-4CCD-BC65-0908D57FA83A_0",
                                 "A8675945-DE94-4E22-9905-B0623A326221_0",
-                                "DC163277-D563-4621-8F7B-F9C9B52AA9A7_0"], "ntl20":2, "ntl90":2, 
+                                "DC163277-D563-4621-8F7B-F9C9B52AA9A7_0"], "ntl20":2, "ntl90":3, 
                         "tp20_1":["pave_link_89_90",
                                   "pave_link_89_106",
                                   "pave_link_90_111"],
+                        "sp_2":["DC163277-D563-4621-8F7B-F9C9B52AA9A7_0"], "ntl20_2":1,
                         "tp20_2":["pave_link_111_112",
                                   "pave_link_112_124"],
                         "tp90_1":["pave_link_106_91",
                                   "pave_link_112_124",
                                   "pave_link_91_112"]
-                      }
+                      },
+
+  "tactical2_config": { "or_node_ids": ["node_id_71"], "road_link_id":"9745D155-3C95-4CCD-BC65-0908D57FA83A_0", "od": [6, 10], "pave_links_exclude":["pave_link_51_83"],
+                        "study_area_ids":["8A9E2D7B-3B48-4A19-B89A-0B4F4D516870_2",
+                                          "F4C0B1FB-762C-4492-BB0D-673CC4950CBE_0",
+                                          "8A9E2D7B-3B48-4A19-B89A-0B4F4D516870_1",
+                                          "4311C2BD-2CB8-41BD-9AE2-7FB5B10DFEE6_0"], 
+                        "sp":[  "8A9E2D7B-3B48-4A19-B89A-0B4F4D516870_1",
+                                "8A9E2D7B-3B48-4A19-B89A-0B4F4D516870_2"], "ntl":2, 
+                        "tpmd":["pave_link_88_81",
+                                "pave_link_88_85"],
+                        "tpmc":["pave_link_87_85",
+                                "pave_link_87_81"]
+                      },
+  
+  "operational1_config": {  "or_node_ids": ["node_id_71"], "road_link_id":"9745D155-3C95-4CCD-BC65-0908D57FA83A_0", "od": [4], "pave_links_exclude":["pave_link_51_83"],
+                            "study_area_ids":["9745D155-3C95-4CCD-BC65-0908D57FA83A_0",
+                                              "A8675945-DE94-4E22-9905-B0623A326221_0",
+                                              "F4C0B1FB-762C-4492-BB0D-673CC4950CBE_0"], 
+                            "sp":[], "ntl":0, 
+                            "tp":[  "pave_link_106_91",
+                                    "pave_link_91_112"],
+                            "offsets": [[-2,-2.5],[-2,2.5],[-2,2]],
+                            "crossing_coords":[[530460, 180852], [530455, 180858]],
+                            "crossing_coords_tp_index":0
+                          },
+
+  "operational2_config": {  "or_node_ids": ["node_id_71"], "road_link_id":"9745D155-3C95-4CCD-BC65-0908D57FA83A_0", "od": [4], "pave_links_exclude":["pave_link_51_83"],
+                            "study_area_ids":["9745D155-3C95-4CCD-BC65-0908D57FA83A_0",
+                                              "A8675945-DE94-4E22-9905-B0623A326221_0",
+                                              "F4C0B1FB-762C-4492-BB0D-673CC4950CBE_0"], 
+                            "sp":[], "ntl":0, 
+                            "tp":[  "pave_link_89_90",
+                                    "pave_link_89_106",
+                                    "pave_link_90_111"],
+                            "offsets": [[-2,-2.5],[-2,2.5],[-2,2]],
+                            "crossing_coords":[[530460, 180852], [530455, 180858]],
+                            "crossing_coords_tp_index":null
+                          }
 }
