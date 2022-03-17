@@ -299,7 +299,7 @@ def figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links
 
     return f
 
-def figure_operational_waypoints(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, config = fig_config):
+def figure_operational_waypoints(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, annotation_color, config = fig_config):
     '''Function for creating figures illustrating tactical path finding
     '''
 
@@ -334,7 +334,7 @@ def figure_operational_waypoints(study_area_rls, origin_id, dest_id, tp, gdfTopo
     gdftp_nodes.sort_values(by='y', ascending=True, inplace=True)
     for i,g in enumerate(gdftp_nodes['geometry'].values):
         x,y = g.coords[0]
-        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data')
+        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data', color=annotation_color)
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
@@ -345,7 +345,7 @@ def figure_operational_waypoints(study_area_rls, origin_id, dest_id, tp, gdfTopo
 
     return f
 
-def figure_operational_path(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, crossing_coords, crossing_coords_tp_index, config = fig_config):
+def figure_operational_path(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, annotation_color, crossing_coords, crossing_coords_tp_index, crossing_offsets, config = fig_config):
     '''Function for creating figures illustrating tactical path finding
     '''
 
@@ -398,12 +398,73 @@ def figure_operational_path(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, 
     # annotate the location of tactical path junctions
     for i,g in enumerate(gdftp_nodes['geometry'].values):
         x,y = g.coords[0]
-        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data')
+        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data', color=annotation_color)
+
+    for i,c in enumerate(crossing_coords):
+        x,y = c
+        ax.annotate("C{}".format(i+1), xy=(x, y), xycoords='data', xytext=(x+crossing_offsets[i][0], y+crossing_offsets[i][1]), textcoords='data', color="white")
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
     ax.set_xlim(xmin-3, xmax+3)
     ax.set_ylim(ymin-7.5, ymax+7.5)
+
+    ax.set_axis_off()
+
+    return f
+
+def figure_experiments(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ca_files, ca_colors, road_links_annotate, rl_annotate_positions, od_offsets, bounds_offsets, config = fig_config):
+    '''Function for creating figures illustrating parameter setting experiments
+    '''
+
+    # Initialise figure
+    f, ax = plt.subplots(1,1, figsize = (10,10))
+
+    # Get study area gdfs
+    gdfORLinkSA = gdfORLink.loc[ gdfORLink['fid'].isin(study_area_rls)]
+    study_area_nodes = np.concatenate( [gdfORLinkSA['MNodeFID'].values, gdfORLinkSA['PNodeFID'].values] )
+    gdfTopoPedSA = gdfTopoPed.loc[gdfTopoPed['roadLinkID'].isin(study_area_rls)]
+    gdfTopoVehSA = gdfTopoVeh.loc[gdfTopoVeh['roadLinkID'].isin(study_area_rls)]
+    
+
+    # Plot study area layers
+    ax = plot_layers(ax, config, pavement = gdfTopoPedSA, carriageway = gdfTopoVehSA, road_link = None, road_node = None, pavement_link = None, pavement_node = None)
+
+    # Select route layers
+
+    gdftp = gdfPedLinks.loc[ gdfPedLinks['fid'].isin(tp)]
+    gdftp_nodes = gdfPedNodes.loc[ (gdfPedNodes['fid'].isin(gdftp['MNodeFID']) | (gdfPedNodes['fid'].isin(gdftp['PNodeFID'])))]
+
+    gdfods = gdfPedODs.loc[ gdfPedODs['fid'].isin( [origin_id, dest_id])]
+    gdfods.plot(ax=ax, edgecolor = config['od']['color'], facecolor = config['od']['color'], linewidth=config['od']['linewidth'], zorder=9)
+
+    # plot these additional layers
+    gdftp.plot(ax=ax, edgecolor = config['pavement_link']['path_color'], linewidth=config['pavement_link']['pathwidth'], linestyle = '-', zorder=8)
+    gdftp_nodes.plot(ax=ax, edgecolor = config['pavement_node']['path_color'], facecolor = config['pavement_node']['path_color'], linewidth=config['pavement_node']['pathwidth'], zorder=8)
+
+    gdftp_nodes['y'] = gdftp_nodes.geometry.map(lambda g: g.coords[0][1])
+    gdftp_nodes.sort_values(by='y', ascending=True, inplace=True)
+
+    
+    for i, path in enumerate(ca_files):
+        gdf = gpd.read_file(path)
+        gdf.plot(ax=ax, edgecolor = ca_colors[i], linewidth=config['pavement_link']['pathwidth'], linestyle = '-', zorder=8+i)
+        
+
+    # add annotations
+    o_coords = gdfPedODs.loc[ gdfPedODs['fid']==origin_id, 'geometry'].values[0].coords[0]
+    d_coords = gdfPedODs.loc[ gdfPedODs['fid']==dest_id, 'geometry'].values[0].coords[0]
+    ax.annotate("O", xy=o_coords, xycoords='data', xytext=(o_coords[0]+od_offsets[0][0], o_coords[1]+od_offsets[0][1]), textcoords='data', color="white")
+    ax.annotate("D", xy=d_coords, xycoords='data', xytext=(d_coords[0]+od_offsets[1][0], d_coords[1]+od_offsets[1][1]), textcoords='data', color="white")
+    
+    for i, rl in enumerate(road_links_annotate):
+        rl_cent = gdfORLink.loc[ gdfORLink['fid']==rl, 'geometry'].values[0].centroid.coords[0]
+        ax.text(rl_annotate_positions[i][0], rl_annotate_positions[i][1], "RL{}".format(i+1), color="white")
+
+    # Set limits
+    xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
+    ax.set_xlim(xmin+bounds_offsets[0][0], xmax+bounds_offsets[0][1])
+    ax.set_ylim(ymin+bounds_offsets[1][0], ymax+bounds_offsets[1][1])
 
     ax.set_axis_off()
 
@@ -433,6 +494,9 @@ output_operational1_links = os.path.join(img_dir, "route_operational_trip2_ph20_
 output_operational1_path = os.path.join(img_dir, "route_operational_trip2_ph20_mincross_primary_b.png")
 output_operational2_links = os.path.join(img_dir, "route_operational_trip2_ph20_mincross_secondary_a.png")
 output_operational2_path = os.path.join(img_dir, "route_operational_trip2_ph20_mincross_secondary_b.png")
+
+output_experiment1_path = os.path.join(img_dir, "postpone_crossing_configuration.png")
+output_experiment2_path = os.path.join(img_dir, "sigspatial_replicate_configuration.png")
 
 
 # class_rename_dict is taken from the 'pavenet_centrality.py' script
@@ -483,6 +547,7 @@ assert cpn.gdfORLink.loc[ ~cpn.gdfORLink['class'].isin(['Unclassified','A Road',
 #
 #
 #################################
+plt.tight_layout()
 
 or_link_ids = ["or_link_796","or_link_587","or_link_604","or_link_603","or_link_767","or_link_797","or_link_605"]
 
@@ -523,17 +588,20 @@ n_horizon_links = fig_config['tactical1_config']['ntl20']
 tp = fig_config['tactical1_config']['tp20_1']
 
 f_tactical1_ph20_mincross = figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical1_ph20_mincross.tight_layout()
 f_tactical1_ph20_mincross.savefig(output_tp1_ph20_mincross)
 
 tp = fig_config['tactical1_config']['tp20_2']
 
 f_tactical2_ph20_mincross = figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical2_ph20_mincross.tight_layout()
 f_tactical2_ph20_mincross.savefig(output_tp2_ph20_mincross)
 
 n_horizon_links = fig_config['tactical1_config']['ntl90']
 tp = fig_config['tactical1_config']['tp90_1']
 
 f_tactical1_ph90_mincross = figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical1_ph90_mincross.tight_layout()
 f_tactical1_ph90_mincross.savefig(output_tp1_ph90_mincross)
 
 
@@ -550,11 +618,13 @@ n_horizon_links = fig_config['tactical2_config']['ntl']
 tpmd = fig_config['tactical2_config']['tpmd']
 
 f_tactical2_md = figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tpmd, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical2_md.tight_layout()
 f_tactical2_md.savefig(output_tp2_md)
 
 tpmc = fig_config['tactical2_config']['tpmc']
 
 f_tactical2_mc = figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links, tpmc, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, ped_links_exclude, config = fig_config)
+f_tactical2_mc.tight_layout()
 f_tactical2_mc.savefig(output_tp2_mc)
 
 
@@ -565,28 +635,91 @@ study_area_rls = fig_config['operational1_config']['study_area_ids']
 origin_id = fig_config['operational1_config']['od'][0]
 ped_links_exclude = fig_config['operational1_config']['pave_links_exclude']
 offsets = fig_config['operational1_config']['offsets']
+annotation_color = fig_config['operational1_config']['annotation_color']
+
 
 tp = fig_config['operational1_config']['tp']
 
-f_operational1_links = figure_operational_waypoints(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, config = fig_config)
+f_operational1_links = figure_operational_waypoints(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, annotation_color, config = fig_config)
+f_operational1_links.tight_layout()
 f_operational1_links.savefig(output_operational1_links)
 
 crossing_coords = fig_config['operational1_config']['crossing_coords']
 crossing_coords_tp_index = fig_config['operational1_config']['crossing_coords_tp_index']
+crossing_offsets = fig_config['operational1_config']['crossing_offsets']
 
-f_operational1_path = figure_operational_path(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, crossing_coords, crossing_coords_tp_index, config = fig_config)
+f_operational1_path = figure_operational_path(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, annotation_color, crossing_coords, crossing_coords_tp_index, crossing_offsets, config = fig_config)
+f_operational1_path.tight_layout()
 f_operational1_path.savefig(output_operational1_path)
 
 
 offsets = fig_config['operational2_config']['offsets']
+annotation_color = fig_config['operational2_config']['annotation_color']
 
 tp = fig_config['operational2_config']['tp']
 
-f_operational2_links = figure_operational_waypoints(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, config = fig_config)
+f_operational2_links = figure_operational_waypoints(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, annotation_color, config = fig_config)
+f_operational2_links.tight_layout()
 f_operational2_links.savefig(output_operational2_links)
 
 crossing_coords = fig_config['operational2_config']['crossing_coords']
 crossing_coords_tp_index = fig_config['operational2_config']['crossing_coords_tp_index']
+crossing_offsets = fig_config['operational2_config']['crossing_offsets']
 
-f_operational2_path = figure_operational_path(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, crossing_coords, crossing_coords_tp_index, config = fig_config)
+f_operational2_path = figure_operational_path(study_area_rls, origin_id, None, tp, cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, gdfPedODs, offsets, annotation_color, crossing_coords, crossing_coords_tp_index, crossing_offsets, config = fig_config)
+f_operational2_path.tight_layout()
 f_operational2_path.savefig(output_operational2_path)
+
+
+
+#
+# Figures showing environments used to set parameter ranges
+#
+# Need to load different sets of data
+gis_data_dir = fig_config['experiment1_config']['gis_data_dir']
+experiment_dir = os.path.join( gis_data_dir, fig_config['experiment1_config']['experiment_folder'])
+
+cas_files = [os.path.join(experiment_dir, i) for i in fig_config['experiment1_config']['ca_files']]
+gdfod = gpd.read_file(os.path.join(experiment_dir, "OD_pedestrian_nodes.shp"))
+
+gdfTopoPed = gpd.read_file( os.path.join(gis_data_dir, "processed_gis_data", "topographicAreaPedestrian.shp") )
+gdfTopoVeh = gpd.read_file( os.path.join(gis_data_dir, "processed_gis_data", "topographicAreaVehicle.shp") )
+gdfORNode = gpd.read_file( os.path.join(gis_data_dir, "processed_gis_data", "open-roads RoadNode Intersect Within simplify angles.shp") )
+gdfORLink = gpd.read_file( os.path.join(gis_data_dir, "processed_gis_data", "open-roads RoadLink Intersect Within simplify angles.shp") )
+gdfPedLinks = gpd.read_file( os.path.join(gis_data_dir, "processed_gis_data", "pedNetworkLinks.shp") )
+gdfPedNodes = gpd.read_file( os.path.join(gis_data_dir, "processed_gis_data", "pedNetworkNodes.shp") )
+
+study_area_rls = fig_config['experiment1_config']['study_area_ids']
+origin_id, dest_id = fig_config['experiment1_config']['od']
+tp = fig_config['experiment1_config']['tp']
+ca_colors = fig_config['experiment1_config']['ca_colors']
+road_links_annotate = fig_config['experiment1_config']['road_links_annotate']
+rl_annotate_positions = fig_config['experiment1_config']['annotate_positions']
+od_offsets = fig_config['experiment1_config']['od_offsets']
+bounds_offsets = fig_config['experiment1_config']['bounds_offsets']
+
+f_experiment1 = figure_experiments(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfod, cas_files, ca_colors, road_links_annotate, rl_annotate_positions, od_offsets, bounds_offsets, config = fig_config)
+f_experiment1.tight_layout()
+f_experiment1.savefig(output_experiment1_path)
+
+
+
+
+
+experiment_dir = os.path.join( gis_data_dir, fig_config['experiment2_config']['experiment_folder'])
+
+cas_files = [os.path.join(experiment_dir, i) for i in fig_config['experiment2_config']['ca_files']]
+gdfod = gpd.read_file(os.path.join(experiment_dir, "OD_pedestrian_nodes.shp"))
+
+study_area_rls = fig_config['experiment2_config']['study_area_ids']
+origin_id, dest_id = fig_config['experiment2_config']['od']
+tp = fig_config['experiment2_config']['tp']
+ca_colors = fig_config['experiment2_config']['ca_colors']
+road_links_annotate = fig_config['experiment2_config']['road_links_annotate']
+rl_annotate_positions = fig_config['experiment2_config']['annotate_positions']
+od_offsets = fig_config['experiment2_config']['od_offsets']
+bounds_offsets = fig_config['experiment2_config']['bounds_offsets']
+
+f_experiment2 = figure_experiments(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfod, cas_files, ca_colors, road_links_annotate, rl_annotate_positions, od_offsets, bounds_offsets, config = fig_config)
+f_experiment2.tight_layout()
+f_experiment2.savefig(output_experiment2_path)

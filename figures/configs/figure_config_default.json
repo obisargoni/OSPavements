@@ -58,7 +58,9 @@
                             "tp":[  "pave_link_106_91",
                                     "pave_link_91_112"],
                             "offsets": [[-2,-2.5],[-2,2.5],[-2,2]],
-                            "crossing_coords":[[530460, 180852], [530455, 180858]],
+                            "annotation_color":"black",
+                            "crossing_coords":[[530460, 180852], [530454, 180858.2]],
+                            "crossing_offsets": [[1.5,1],[2, -1]],
                             "crossing_coords_tp_index":0
                           },
 
@@ -70,8 +72,47 @@
                             "tp":[  "pave_link_89_90",
                                     "pave_link_89_106",
                                     "pave_link_90_111"],
-                            "offsets": [[-2,-2.5],[-2,2.5],[-2,2]],
-                            "crossing_coords":[[530460, 180852], [530455, 180858]],
-                            "crossing_coords_tp_index":null
+                            "offsets": [[-2,2.5],[-2,2.5],[-2,2.5], [-2,2.5]],
+                            "annotation_color":"white",
+                            "crossing_coords":[[530474, 180861], [530484, 180868]],
+                            "crossing_offsets": [[1,-1],[1, -2.5]],
+                            "crossing_coords_tp_index":1
+                          },
+
+  "experiment1_config": {   "gis_data_dir":"S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Clapham Common",
+                            "experiment_folder": "simple_pedestrian_trips",
+                            "ca_files":["CrossingAlternatives.shp"],
+                            "ca_colors":["#4e72d3"],
+                            "or_node_ids": ["node_id_71"], "od": ["od_64", "od_220"], "pave_links_exclude":["pave_link_51_83"],
+                            "study_area_ids":["or_link_114",
+                                              "or_link_116",
+                                              "or_link_117",
+                                              "or_link_122",
+                                              "or_link_125",
+                                              "or_link_129",
+                                              "or_link_130"],
+                            "tp":[  "pave_link_217_224",
+                                    "pave_link_223_244",
+                                    "pave_link_217_223"],
+                            "road_links_annotate":[ "or_link_116",
+                                                    "or_link_114",
+                                                    "or_link_117"
+                                                    ],
+                            "annotate_positions":[[529708, 175610],[529700, 175614], [529696, 175606.5]],
+                            "od_offsets":[[1,-3],[0,3]],
+                            "bounds_offsets":[[140,20],[119, -110]]
+                          },
+
+  "experiment2_config": {   "gis_data_dir":"S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Clapham Common",
+                            "experiment_folder": "sigspatial_replicate",
+                            "ca_files":["between_crossing.shp", "beyond_crossing.shp"],
+                            "ca_colors":["#4e72d3", "#eaeaea"],
+                            "or_node_ids": ["node_id_71"], "od": ["od_64", "od_220"], "pave_links_exclude":["pave_link_51_83"],
+                            "study_area_ids":["or_link_117"],
+                            "tp":[  "pave_link_218_224"],
+                            "road_links_annotate":[],
+                            "annotate_positions":[],
+                            "od_offsets": [[1,-3],[0,1.5]],
+                            "bounds_offsets":[[-5,5],[-5,5]]
                           }
 }
