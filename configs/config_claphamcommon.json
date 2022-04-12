@@ -1,0 +1,37 @@
+{
+  "clip_file": "JunctClip.shp",
+  "centre_poi_ref": 18821938,
+  "study_area_dist": 1000,
+  "ped_polygons_force_include" : ["ped_poly_id_534", "ped_poly_id_537"],
+
+  "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Clapham Common",
+  "toy_gis_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\ToyGrid",
+  "batch_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Clapham Common\\batch_run_data",
+
+  "mastermap_itn_name": "mastermap-itn_4041132",
+  "open_roads_dir": "open-roads_4041135",
+  "open_roads_node_file": "RoadNodeClipped.shp",
+  "open_roads_link_file": "RoadLinkClipped.shp",
+  "topographic_area_dir":"mastermap-topo_4041134\\mastermap_topo_area",
+  "topographic_line_dir":"mastermap-topo_4041134\\mastermap_topo_line",
+  "topographic_area_file":"mastermap_topo_area.shp",
+  "topographic_line_file":"mastermap_topo_line.shp",
+  "poi_file": "poi_4041136\\poi_4041136.gpkg",
+  
+  "mastermap_link_processed_file":"mastermap-itn RoadLink Intersect Within.shp",
+  "mastermap_node_processed_file":"mastermap-itn RoadNode Intersect Within.shp",
+  "mastermap_itn_processed_direction_file": "mastermap-itn RoadLink Intersect Within with orientation.shp",
+  "openroads_link_processed_file":"open-roads RoadLink Intersect Within simplify angles.shp",
+  "openroads_node_processed_file":"open-roads RoadNode Intersect Within simplify angles.shp",
+  "topo_vehicle_processed_file":"topographicAreaVehicle.shp",
+  "topo_pedestrian_processed_file":"topographicAreaPedestrian.shp",
+  "topo_boundary_processed_file":"boundaryPedestrianVehicleArea.shp",
+  "boundary_file":"boundaryPedestrianVehicleArea.shp",
+  "pavement_nodes_file":"pedNetworkNodes.shp",
+  "pavement_links_file": "pedNetworkLinks.shp",
+
+  "vehicle_od_file": "OD_vehicle_nodes_intersect_within.shp",
+  "vehicle_od_flows": "vehicleODFlows.csv",
+  "pedestrian_od_file": "OD_pedestrian_nodes.shp",
+  "pedestrian_od_flows":"pedestrianODFlows.csv"
+}
