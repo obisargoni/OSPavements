@@ -1,21 +1,20 @@
 {
   "clip_file": "JunctClip.shp",
   "centre_poi_ref": 17972260,
-  "study_area_dist": 1000,
+  "study_area_dist": 3000,
   "flows_seed": 1,
 
-  "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Clapham Common",
-  "toy_gis_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\ToyGrid",
+  "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Download_ClaphamCommon5km_1780061",
   "batch_data_dir": "..\\output\\batch\\model_run_data",
 
-  "or_links_exclude_ped_ods": ["or_link_330", "or_link_249", "or_link_248", "or_link_52", "or_link_11"],
+  "or_links_exclude_ped_ods": [],
   "manual_pedestrian_polygon_fids": ["osgb1000001796202393"],
 
-  "mastermap_itn_file": "mastermap-itn_4041132\\mastermap-itn_4041132_0.gml.gz",
-  "open_roads_link_file": "open-roads_4041135\\TQ_RoadLink.shp",
-  "open_roads_node_file": "open-roads_4041135\\TQ_RoadNode.shp",
-  "topographic_file":"mastermap-topo_4041134\\mastermap-topo_4041134.gpkg",
-  "poi_file": "poi_4041136\\poi_4041136.gpkg",
+  "mastermap_itn_file": "mastermap-itn_4092598\\mastermap-itn_4092598_0.gml.gz",
+  "open_roads_link_file": "open-roads_4092887\\TQ_RoadLink.shp",
+  "open_roads_node_file": "open-roads_4092887\\TQ_RoadNode.shp",
+  "topographic_file":"mastermap-topo_4092599\\mastermap-topo_4092599.gpkg",
+  "poi_file": "poi_4092666\\poi_4092666.gpkg",
   
   "mastermap_link_processed_file":"mastermap-itn RoadLink Intersect Within.shp",
   "mastermap_node_processed_file":"mastermap-itn RoadNode Intersect Within.shp",
