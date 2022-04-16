@@ -20,7 +20,7 @@ with open("config.json") as f:
 np.random.seed(config['flows_seed'])
 
 # Proportion of pavement polygons to locate an OD on.
-prop_random_ODs = 1
+prop_random_ODs = config['prop_ped_poly_ods']
 min_distance_of_ped_od_to_ped_road_link = 15
 
 gis_data_dir = config['gis_data_dir']
