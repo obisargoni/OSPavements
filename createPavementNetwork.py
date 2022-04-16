@@ -34,36 +34,24 @@ with open(os.path.join(this_dir, "config.json")) as f:
 gis_data_dir = config['gis_data_dir']
 output_directory = os.path.join(gis_data_dir, "processed_gis_data")
 
+global gdfORLink
+global gdfORNode
+global gdfTopoPed
+global gdfTopoVeh
+global gdfBoundary
+global G
 
-gdfORLink = gpd.read_file(os.path.join(output_directory, config["openroads_link_processed_file"]))
-gdfORNode = gpd.read_file(os.path.join(output_directory, config["openroads_node_processed_file"]))
-gdfORLink.crs = projectCRS
-gdfORNode.crs = projectCRS
-
-gdfTopoVeh = gpd.read_file(os.path.join(output_directory, config["topo_vehicle_processed_file"]))
-gdfTopoPed = gpd.read_file(os.path.join(output_directory, config["topo_pedestrian_processed_file"]))
-gdfTopoVeh.crs = projectCRS
-gdfTopoPed.crs = projectCRS
-
-# Load boundary data - used to identify pavement nodes
-gdfBoundary = gpd.read_file(os.path.join(output_directory, config["boundary_file"]))
-gdfBoundary.crs = projectCRS
-
-output_ped_nodes_file = os.path.join(output_directory, config["pavement_nodes_file"])
-output_ped_links_file = os.path.join(output_directory, config["pavement_links_file"])
-
-# Load the Open Roads road network as a nx graph
-G = nx.MultiGraph()
-gdfORLink['fid_dict'] = gdfORLink.apply(lambda x: {"fid":x['fid'],'geometry':x['geometry']}, axis=1)
-edges = gdfORLink.loc[:,['MNodeFID','PNodeFID', 'fid_dict']].to_records(index=False)
-G.add_edges_from(edges)
-
+gdfORLink = None
+gdfORNode = None
+gdfTopoPed = None
+gdfTopoVeh = None
+gdfBoundary = None
+G = None
 
 # Parameters that control area searched for suitable pavement node locations
 default_angle_range = 90
 backup_angle_range = None
 default_ray_length = 20
-
 
 #################################
 #
@@ -97,7 +85,6 @@ def angle_between_north_and_vector(v):
     unit_v = unit_vector(v)
     return angle_between_north_and_unit_vector(unit_v)
             
-
 def ang(lineA, lineB):
     # Get nicer vector form
     lACoords = lineA.coords
@@ -121,7 +108,6 @@ def ang(lineA, lineB):
         return 360 - ang_deg
     else: 
         return ang_deg
-
 
 def sample_angles(a1, a2, sample_res):
     if a1 < a2:
@@ -234,8 +220,11 @@ def multiple_road_node_pedestrian_nodes_metadata(graph, gdfRoadNodes):
     dfPedNodes = pd.DataFrame()
 
     for road_node_id, road_node_geom in gdfRoadNodes.loc[:, ['node_fid', 'geometry']].values:
-        df = road_node_pedestrian_nodes_metadata(graph, road_node_geom, road_node_id)
-        dfPedNodes = pd.concat([dfPedNodes, df])
+        try:
+            df = road_node_pedestrian_nodes_metadata(graph, road_node_geom, road_node_id)
+            dfPedNodes = pd.concat([dfPedNodes, df])
+        except Exception as err:
+            print(road_node_id, road_node_geom)
 
     dfPedNodes.index = np.arange(dfPedNodes.shape[0])
     return dfPedNodes
@@ -353,7 +342,7 @@ def nearest_point_in_coord_sequence(coords, min_dist, start_point, a1, a2, serie
 
     return chosen_point, min_dist
 
-def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, series_coord_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, crs = projectCRS):
+def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, series_coord_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, default_disp = 5, crs = projectCRS):
     """Identify coordinates for ped nodes based on the bounday.
     """
 
@@ -379,7 +368,7 @@ def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, serie
         if method == 'ray_intersection':
             ped_node_geom = nearest_ray_intersection_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, required_range = required_range, ray_length = ray_length)
         elif method == 'default':
-            ped_node_geom = point_located_between_angles(a1, a2, road_node, series_road_links, d = 5)
+            ped_node_geom = point_located_between_angles(a1, a2, road_node, series_road_links, d = default_disp)
         else:
             ped_node_geom = None
 
@@ -624,6 +613,30 @@ def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
                     print("Corrected no crossing edge {}".format(gdfPL.loc[ix, 'fid']))
     return gdfPL
 
+def load_data():
+    gdfORLink = gpd.read_file(os.path.join(output_directory, config["openroads_link_processed_file"]))
+    gdfORNode = gpd.read_file(os.path.join(output_directory, config["openroads_node_processed_file"]))
+    gdfORLink.crs = projectCRS
+    gdfORNode.crs = projectCRS
+
+    gdfTopoVeh = gpd.read_file(os.path.join(output_directory, config["topo_vehicle_processed_file"]))
+    gdfTopoPed = gpd.read_file(os.path.join(output_directory, config["topo_pedestrian_processed_file"]))
+    gdfTopoVeh.crs = projectCRS
+    gdfTopoPed.crs = projectCRS
+
+    # Load boundary data - used to identify pavement nodes
+    gdfBoundary = gpd.read_file(os.path.join(output_directory, config["boundary_file"]))
+    gdfBoundary.crs = projectCRS
+
+    output_ped_nodes_file = os.path.join(output_directory, config["pavement_nodes_file"])
+    output_ped_links_file = os.path.join(output_directory, config["pavement_links_file"])
+
+    # Load the Open Roads road network as a nx graph
+    G = nx.MultiGraph()
+    gdfORLink['fid_dict'] = gdfORLink.apply(lambda x: {"fid":x['fid'],'geometry':x['geometry']}, axis=1)
+    edges = gdfORLink.loc[:,['MNodeFID','PNodeFID', 'fid_dict']].to_records(index=False)
+    G.add_edges_from(edges)
+    return True
 
 def run(gdfTopoPed = gdfTopoPed, gdfTopoVeh = gdfTopoVeh, gdfORNode = gdfORNode, gdfORLink = gdfORLink, gdfBoundary = gdfBoundary, G=G):
     ########################################
@@ -635,6 +648,8 @@ def run(gdfTopoPed = gdfTopoPed, gdfTopoVeh = gdfTopoVeh, gdfORNode = gdfORNode,
     #
     #
     ########################################
+
+    load_data()
 
     # Find which ped polygons touch a barrier
     gdfTopoPedBoundary = gpd.sjoin(gdfTopoPed, gdfBoundary, op = 'intersects')
