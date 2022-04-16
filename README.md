@@ -39,3 +39,26 @@ Given the road nodes to use as vehicle ODs this procudes random flows between OD
 7. pedestrianODFlows.py
 
 Very simple script to generate random flows between pedestrian ODs
+
+
+## How to create a toy environment
+
+1. createToyEnvironment.py
+
+This creates the toy road networks, pavement network adn pavement and carriageway polygons
+
+2. Manually create a POI file
+
+This is used to set the pedestrian trip destination
+
+3. vehicleODFlows.py
+
+Creates vehicle ODs and the flows between them
+
+4. pedestrianODFlows.py
+
+Creates the pedestrian ODs and the flows between them
+
+5. processCrossingAlternatives.py
+
+Create teh crossing infrastructure
