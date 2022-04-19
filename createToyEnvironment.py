@@ -128,7 +128,12 @@ def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
     gdf_itn['weight'] = gdf_itn['geometry'].length
 
     gdfITNNode = gdfRoadNode.rename(columns = {'node_fid':'fid'})
-    gdfITNNode = gdfITNNode['fid'].map(lambda x: x.replace('node', 'itn_node'))
+    gdfITNNode['fid'] = gdfITNNode['fid'].map(lambda x: x.replace('node', 'itn_node'))
+
+    gdf_itn['MNodeFID'] = gdf_itn['MNodeFID'].map(lambda x: x.replace('node', 'itn_node'))
+    gdf_itn['PNodeFID'] = gdf_itn['PNodeFID'].map(lambda x: x.replace('node', 'itn_node'))
+    dfedges['start_node'] = dfedges['start_node'].map(lambda x: x.replace('node', 'itn_node'))
+    dfedges['end_node'] = dfedges['end_node'].map(lambda x: x.replace('node', 'itn_node'))
 
     return gdf_itn, gdfITNNode, dfedges
 
