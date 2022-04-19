@@ -171,10 +171,12 @@ def check_road_link_direction(gdfRoadLink, gdfRoadNode):
     gdf_itn = None
     return True
 
-def pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = 90, disp = 5, crs=projectCRS):
+def pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = 90, lane_width = 5, crs=projectCRS):
     # Node metadata
     dfPedNodes = cpn.multiple_road_node_pedestrian_nodes_metadata(road_graph, gdfRoadNode)
-    dfPedNodes['geometry'] = cpn.assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = disp, crs = crs)
+
+
+    dfPedNodes['geometry'] = cpn.assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = lane_width, d_direction = 'perp', crs = crs)
 
     n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
     print("Number of missing nodes: {}".format(n_missing_nodes))
@@ -229,7 +231,7 @@ def carriageway_geometries(gdfPaveNodes, gdfRoadNodes, gdfRoadLink, crs = projec
 
     return gdfRoadPolys
 
-def pavement_geometries(gdfRoadLink, gdfPaveLink, gdfPaveNode, pavement_width, angle_range = 90, disp = 5, crs = projectCRS):
+def pavement_geometries(gdfRoadLink, gdfPaveLink, gdfPaveNode, pavement_width, angle_range = 90, lane_width = 5, crs = projectCRS):
     '''
     env_poly = environment_polygon(environment_limits)
     gdfEnv = gpd.GeoDataFrame({'geometry':[env_poly]}, geometry='geometry', crs = crs)
@@ -250,7 +252,7 @@ def pavement_geometries(gdfRoadLink, gdfPaveLink, gdfPaveNode, pavement_width, a
     '''
 
     # create alternative ped node
-    gdfPaveNode['alt_geom'] = cpn.assign_boundary_coordinates_to_ped_nodes(gdfPaveNode, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = disp + pavement_width, crs = crs)
+    gdfPaveNode['alt_geom'] = cpn.assign_boundary_coordinates_to_ped_nodes(gdfPaveNode, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = lane_width + pavement_width, d_direction='perp', crs = crs)
 
     # loop through non-crossing pavement links, get all coords corresponding to this link
     pavement_data = {   'roadLinkID':[],
@@ -316,7 +318,7 @@ output_boundary_file = os.path.join(output_directory, config['boundary_file'])
 
 environment_limits = ( (0,1000), (0,1000) )
 block_size = 50
-carriageway_width = 5
+lane_width = 5
 pavement_width = 3
 angle_range = 90
 
@@ -341,11 +343,11 @@ edges = gdfRoadLink.loc[:,['MNodeFID','PNodeFID', 'fid_dict']].to_records(index=
 road_graph.add_edges_from(edges)
 gdfRoadLink.drop('fid_dict', axis=1, inplace=True)
 
-gdfPaveNode = pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = angle_range, disp = carriageway_width, crs=projectCRS)
+gdfPaveNode = pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = angle_range, lane_width = lane_width, crs=projectCRS)
 gdfPaveLink = pavement_network_links(gdfPaveNode, gdfRoadLink, road_graph, crs = projectCRS)
 
 gdfRoadPolys = carriageway_geometries(gdfPaveNode, gdfRoadNode, gdfRoadLink, crs = projectCRS)
-gdfPavePolys = pavement_geometries(gdfRoadLink, gdfPaveLink, gdfPaveNode, pavement_width, angle_range = angle_range, disp = carriageway_width, crs = projectCRS)
+gdfPavePolys = pavement_geometries(gdfRoadLink, gdfPaveLink, gdfPaveNode, pavement_width, angle_range = angle_range, lane_width = lane_width, crs = projectCRS)
 
 gdfBoundary = gpd.GeoDataFrame({'geometry':[ LineString(gdfPavePolys.geometry.unary_union.convex_hull.exterior) ], 'priority':['pedestrian_obstruction']}, geometry='geometry', crs = projectCRS)
 

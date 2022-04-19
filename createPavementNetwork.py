@@ -286,10 +286,15 @@ def nearest_geometry_point_between_angles(a1, a2, start_point, seriesGeoms, seri
         
         return nearest_point
 
-def point_located_between_angles(a1, a2, start_point, seriesRoadLinks, d = 5):
+def point_located_between_angles(a1, a2, start_point, seriesRoadLinks, d = 5, d_direction = 'mid_angle'):
     si_road_link = seriesRoadLinks.sindex
 
     mid_angle = angle_range_midpoint(a1, a2)
+
+    if d_direction == 'perp':
+        # d is the perpendicular distance between the point ad the road link
+        a = abs(a1-a2)/2
+        d = d/np.sin(a)
 
     p = Point([start_point.x + d*np.sin(mid_angle), start_point.y + d*np.cos(mid_angle)])
     l = LineString([start_point,p])
@@ -342,7 +347,7 @@ def nearest_point_in_coord_sequence(coords, min_dist, start_point, a1, a2, serie
 
     return chosen_point, min_dist
 
-def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, series_coord_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, default_disp = 5, crs = projectCRS):
+def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, series_coord_geoms, method = 'ray_intersection', required_range = None, ray_length = 20, default_disp = 5, d_direction = 'mid_angle', crs = projectCRS):
     """Identify coordinates for ped nodes based on the bounday.
     """
 
@@ -368,7 +373,7 @@ def assign_boundary_coordinates_to_ped_nodes(df_ped_nodes, gdf_road_links, serie
         if method == 'ray_intersection':
             ped_node_geom = nearest_ray_intersection_point_between_angles(a1, a2, road_node, series_coord_geoms, series_road_links, required_range = required_range, ray_length = ray_length)
         elif method == 'default':
-            ped_node_geom = point_located_between_angles(a1, a2, road_node, series_road_links, d = default_disp)
+            ped_node_geom = point_located_between_angles(a1, a2, road_node, series_road_links, d = default_disp, d_direction = d_direction)
         else:
             ped_node_geom = None
 
