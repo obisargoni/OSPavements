@@ -100,6 +100,49 @@ def create_grid_road_network(environment_limits, block_size, crs = projectCRS):
 
     return gdfGrid, gdfGridNodes
 
+def create_quad_grid_road_network(environment_limits, block_size, crs = projectCRS):
+
+    grid_size = environment_limits[0][1]+1
+    num_nodes = (int(grid_size/block_size)**2) *2
+
+    # run the quad tree
+    sys.path.append("C:\\Users\\Obi Sargoni\\Documents\\CASA\\road-network\\rng\\")
+    from network_gen import main
+    main(size=grid_size, max_nodes=num_nodes, seed=2, outdir = "")
+
+    edges_path = "edge-list"
+    nodes_path = "node-list"
+
+    dfE = pd.read_csv(edges_path, header = None)
+    dfE.columns = ['MNodeFID','PNodeFID']
+    dfN = pd.read_csv(nodes_path, header=None)
+    dfN.columns = ['node_fid','x','y']
+
+    # Need to drop duplicated edges
+    dfE['node_set'] = [tuple(np.sort(i)) for i in dfE.loc[:, ['MNodeFID','PNodeFID']].values]
+    dfE.drop_duplicates(subset = 'node_set', inplace=True)
+    dfE.drop('node_set', axis=1, inplace=True)
+
+    dfN['p'] = dfN.apply(lambda row: Point([row['x'], row['y']]), axis=1)
+    dfE = pd.merge(dfE, dfN, left_on = 'MNodeFID', right_on = 'node_fid')
+    dfE = pd.merge(dfE, dfN, left_on = 'PNodeFID', right_on = 'node_fid', suffixes = ("_u", "_v"))
+    dfE.drop(['node_fid_u','node_fid_v','x_u','y_u','x_v','y_v'], axis=1, inplace=True)
+    dfE['geometry'] = dfE.apply(lambda row: LineString([row['p_u'], row['p_v']]), axis=1)
+    dfE['length'] = dfE['geometry'].map(lambda g: g.length)
+    dfE.drop(['p_u', 'p_v'], axis=1, inplace=True)
+
+    dfN.rename(columns={'p':'geometry'}, inplace=True)
+
+    gdfGrid = gpd.GeoDataFrame(dfE, geometry = 'geometry', crs = crs)
+    gdfGridNodes = gpd.GeoDataFrame(dfN, geometry='geometry', crs=crs)
+
+    gdfGrid['fid'] = gdfGrid.apply(lambda row: "quad_grid_{}_{}".format(row['MNodeFID'], row['PNodeFID']), axis=1)
+    gdfGrid['MNodeFID'] = gdfGrid['MNodeFID'].map(lambda x: 'node_{}'.format(x))
+    gdfGrid['PNodeFID'] = gdfGrid['PNodeFID'].map(lambda x: 'node_{}'.format(x))
+    gdfGridNodes['node_fid'] = gdfGridNodes['node_fid'].map(lambda x: 'node_{}'.format(x))
+
+    return gdfGrid, gdfGridNodes
+
 def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
     '''
     '''
@@ -176,7 +219,7 @@ def pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = 9
     dfPedNodes = cpn.multiple_road_node_pedestrian_nodes_metadata(road_graph, gdfRoadNode)
 
 
-    dfPedNodes['geometry'] = cpn.assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = lane_width, d_direction = 'perp', crs = crs)
+    dfPedNodes['geometry'] = cpn.assign_boundary_coordinates_to_ped_nodes(dfPedNodes, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = lane_width, d_direction = 'perp', adjust_for_small_links = True, crs = crs)
 
     n_missing_nodes = dfPedNodes.loc[ dfPedNodes['geometry'].isnull()].shape[0]
     print("Number of missing nodes: {}".format(n_missing_nodes))
@@ -252,7 +295,7 @@ def pavement_geometries(gdfRoadLink, gdfPaveLink, gdfPaveNode, pavement_width, a
     '''
 
     # create alternative ped node
-    gdfPaveNode['alt_geom'] = cpn.assign_boundary_coordinates_to_ped_nodes(gdfPaveNode, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = lane_width + pavement_width, d_direction='perp', crs = crs)
+    gdfPaveNode['alt_geom'] = cpn.assign_boundary_coordinates_to_ped_nodes(gdfPaveNode, gdfRoadLink, None, method = 'default', required_range = angle_range, default_disp = lane_width + pavement_width, d_direction='perp', adjust_for_small_links = True, crs = crs)
 
     # loop through non-crossing pavement links, get all coords corresponding to this link
     pavement_data = {   'roadLinkID':[],
@@ -316,8 +359,9 @@ output_edgelist_file = os.path.join(gis_data_dir, "itn_route_info", "itn_edge_li
 
 output_boundary_file = os.path.join(output_directory, config['boundary_file'])
 
-environment_limits = ( (0,1000), (0,1000) )
-block_size = 50
+study_area_dist = config['study_area_dist']
+environment_limits = ( (0,study_area_dist), (0,study_area_dist) )
+block_size = config['block_size']
 lane_width = 5
 pavement_width = 3
 angle_range = 90
@@ -331,7 +375,11 @@ angle_range = 90
 #
 ##################################
 env_poly = environment_polygon(environment_limits)
-gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, block_size)
+
+if config['grid_type'] == 'quad':
+    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, block_size)
+else:
+    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, block_size)
 
 # Create version of the road network vehicles travel on
 gdfITNLink, gdfITNNode, dfedges = create_vehicle_road_network(gdfRoadLink, gdfRoadNode)
