@@ -137,6 +137,7 @@ def create_quad_grid_road_network(environment_limits, block_size, crs = projectC
     gdfGridNodes = gpd.GeoDataFrame(dfN, geometry='geometry', crs=crs)
 
     gdfGrid['fid'] = gdfGrid.apply(lambda row: "quad_grid_{}_{}".format(row['MNodeFID'], row['PNodeFID']), axis=1)
+    gdfGrid['pedRLID'] = gdfGrid['fid']
     gdfGrid['MNodeFID'] = gdfGrid['MNodeFID'].map(lambda x: 'node_{}'.format(x))
     gdfGrid['PNodeFID'] = gdfGrid['PNodeFID'].map(lambda x: 'node_{}'.format(x))
     gdfGridNodes['node_fid'] = gdfGridNodes['node_fid'].map(lambda x: 'node_{}'.format(x))
