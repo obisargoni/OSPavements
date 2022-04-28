@@ -17,7 +17,8 @@ with open("config.json") as f:
 
 gis_data_dir = config['gis_data_dir']
 
-itnF = os.path.join(gis_data_dir, config["mastermap_itn_file"])
+itnF = os.path.join(gis_data_dir, config["mastermap_itn_link_file"])
+itnRIF = os.path.join(gis_data_dir, config["mastermap_itn_route_file"])
 
 output_directory = os.path.join(gis_data_dir, "itn_route_info")
 
@@ -63,7 +64,8 @@ for rl_element in rl_elements:
 
 
 # Check data frame for nulls
-
+elemTree = etree.parse(itnRIF)
+itnTree = elemTree.getroot()
 ri_elements = itnTree.findall(".//osgb:RoadRouteInformation", itnTree.nsmap)
 
 dfRRI = pd.DataFrame({"RoadRouteInformationFID":[], "DirectedLinkFID":[], "DirectedLinkOrientation":[]})
