@@ -34,12 +34,14 @@ with open(os.path.join(this_dir, "config.json")) as f:
 gis_data_dir = config['gis_data_dir']
 output_directory = os.path.join(gis_data_dir, "processed_gis_data")
 
+'''
 global gdfORLink
 global gdfORNode
 global gdfTopoPed
 global gdfTopoVeh
 global gdfBoundary
 global G
+'''
 
 gdfORLink = None
 gdfORNode = None
@@ -47,6 +49,8 @@ gdfTopoPed = None
 gdfTopoVeh = None
 gdfBoundary = None
 G = None
+output_ped_nodes_file = None
+output_ped_links_file = None
 
 # Parameters that control area searched for suitable pavement node locations
 default_angle_range = 90
@@ -625,6 +629,15 @@ def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
     return gdfPL
 
 def load_data():
+    global gdfORLink
+    global gdfORNode
+    global gdfTopoPed
+    global gdfTopoVeh
+    global gdfBoundary
+    global G
+    global output_ped_nodes_file
+    global output_ped_links_file
+
     gdfORLink = gpd.read_file(os.path.join(output_directory, config["openroads_link_processed_file"]))
     gdfORNode = gpd.read_file(os.path.join(output_directory, config["openroads_node_processed_file"]))
     gdfORLink.crs = projectCRS
@@ -649,7 +662,7 @@ def load_data():
     G.add_edges_from(edges)
     return True
 
-def run(gdfTopoPed = gdfTopoPed, gdfTopoVeh = gdfTopoVeh, gdfORNode = gdfORNode, gdfORLink = gdfORLink, gdfBoundary = gdfBoundary, G=G):
+def run():
     ########################################
     #
     #
@@ -661,6 +674,15 @@ def run(gdfTopoPed = gdfTopoPed, gdfTopoVeh = gdfTopoVeh, gdfORNode = gdfORNode,
     ########################################
 
     load_data()
+
+    global gdfORLink
+    global gdfORNode
+    global gdfTopoPed
+    global gdfTopoVeh
+    global gdfBoundary
+    global G
+    global output_ped_nodes_file
+    global output_ped_links_file
 
     # Find which ped polygons touch a barrier
     gdfTopoPedBoundary = gpd.sjoin(gdfTopoPed, gdfBoundary, op = 'intersects')
