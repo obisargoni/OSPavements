@@ -669,7 +669,9 @@ with open("config.json") as f:
 
 gis_data_dir = config['gis_data_dir']
 
-itn_file = os.path.join(gis_data_dir, config['mastermap_itn_file'])
+itn_file = os.path.join(gis_data_dir, config['mastermap_itn_link_file'])
+itn_node_file = os.path.join(gis_data_dir, config["mastermap_itn_node_file"])
+
 open_roads_link_file = os.path.join(gis_data_dir, config['open_roads_link_file'])
 open_roads_node_file = os.path.join(gis_data_dir, config['open_roads_node_file'])
 poi_file = os.path.join(gis_data_dir, config['poi_file'])
@@ -699,13 +701,13 @@ def run():
     ##########################
 
     # Mastermap ITN data - for road network
-    gdfITNLink = gpd.read_file(itn_file, layer = "RoadLink")
+    gdfITNLink = gpd.read_file(itn_file)
     if gdfITNLink.crs is None:
         gdfITNLink.crs = projectCRS
     else:
         assert gdfITNLink.crs.to_string().lower() == projectCRS
 
-    gdfITNNode = gpd.read_file(itn_file, layer = "RoadNode")
+    gdfITNNode = gpd.read_file(itn_node_file)
     if gdfITNNode.crs is None:
         gdfITNNode.crs = projectCRS
     else:
