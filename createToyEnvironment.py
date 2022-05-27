@@ -26,15 +26,26 @@ def environment_polygon(environment_limits):
     poly_points, order = zip(*z)
     return Polygon(poly_points)
 
-def create_grid_road_network(environment_limits, block_size, crs = projectCRS):
+def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
     '''
     envrionment_limits: tupule of min and max limit for each environment direction.
     block_size: length of road link
     '''
 
+    # Innput num_nodes is the desires number, but actual number of road nodes will be a square number. Find the closest possible square number
+    n_blocks_min = np.floor(np.sqrt(num_nodes))
+    n_blocks_max = n_blocks_min+1
+
+    if abs(num_nodes - n_blocks_min**2) < abs(num_nodes - n_blocks_max**2):
+        ntiles = n_blocks_min
+    else:
+        ntiles = n_blocks_max
+
+
     ndim = len(environment_limits)
-    ntiles = [ int( (lim[1]-lim[0]) / block_size) for lim in environment_limits]
-    N = np.product(ntiles)
+    ntiles = np.array([ntiles]*ndim)
+
+    #ntiles = [ int( (lim[1]-lim[0]) / block_size) for lim in environment_limits]
 
     edges_and_widths = [np.linspace(environment_limits[i][0], environment_limits[i][1],
                                     ntiles[i]+1, retstep=True)
@@ -100,13 +111,12 @@ def create_grid_road_network(environment_limits, block_size, crs = projectCRS):
 
     return gdfGrid, gdfGridNodes
 
-def create_quad_grid_road_network(environment_limits, block_size, crs = projectCRS):
+def create_quad_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
 
     grid_size = environment_limits[0][1]+1
-    num_nodes = (int(grid_size/block_size)**2) *2
 
     # run the quad tree
-    sys.path.append("C:\\Users\\Obi Sargoni\\Documents\\CASA\\road-network\\rng\\")
+    sys.path.append("C:\\Users\\obisargoni\\Documents\\CASA\\road-network\\rng\\")
     from network_gen import main
     main(size=grid_size, max_nodes=num_nodes, seed=2, outdir = "")
 
@@ -361,7 +371,8 @@ output_edgelist_file = os.path.join(gis_data_dir, "itn_route_info", "itn_edge_li
 output_boundary_file = os.path.join(output_directory, config['boundary_file'])
 
 study_area_dist = config['study_area_dist']
-environment_limits = ( (0,study_area_dist), (0,study_area_dist) )
+environment_limits = ( (0,study_area_dist*2), (0,study_area_dist*2) )
+num_nodes = config['num_nodes']
 block_size = config['block_size']
 lane_width = 5
 pavement_width = 3
@@ -378,9 +389,9 @@ angle_range = 90
 env_poly = environment_polygon(environment_limits)
 
 if config['grid_type'] == 'quad':
-    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, block_size)
+    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, num_nodes)
 else:
-    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, block_size)
+    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, num_nodes)
 
 # Create version of the road network vehicles travel on
 gdfITNLink, gdfITNNode, dfedges = create_vehicle_road_network(gdfRoadLink, gdfRoadNode)
