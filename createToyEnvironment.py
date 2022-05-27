@@ -33,7 +33,7 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
     '''
 
     # Innput num_nodes is the desires number, but actual number of road nodes will be a square number. Find the closest possible square number
-    n_blocks_min = np.floor(np.sqrt(num_nodes))
+    n_blocks_min = int(np.floor(np.sqrt(num_nodes)))
     n_blocks_max = n_blocks_min+1
 
     if abs(num_nodes - n_blocks_min**2) < abs(num_nodes - n_blocks_max**2):
@@ -373,7 +373,6 @@ output_boundary_file = os.path.join(output_directory, config['boundary_file'])
 study_area_dist = config['study_area_dist']
 environment_limits = ( (0,study_area_dist*2), (0,study_area_dist*2) )
 num_nodes = config['num_nodes']
-block_size = config['block_size']
 lane_width = 5
 pavement_width = 3
 angle_range = 90
