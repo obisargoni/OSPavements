@@ -33,14 +33,15 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
     '''
 
     # Innput num_nodes is the desires number, but actual number of road nodes will be a square number. Find the closest possible square number
-    n_blocks_min = int(np.floor(np.sqrt(num_nodes)))
+    n_blocks_min = int(np.floor(np.sqrt(num_nodes))) 
     n_blocks_max = n_blocks_min+1
 
     if abs(num_nodes - n_blocks_min**2) < abs(num_nodes - n_blocks_max**2):
-        ntiles = n_blocks_min
+        ntiles = n_blocks_min - 1 # -1 bc number of nodes in each direction is one more than number of blocks
     else:
-        ntiles = n_blocks_max
+        ntiles = n_blocks_max - 1
 
+    print(ntiles)
 
     ndim = len(environment_limits)
     ntiles = np.array([ntiles]*ndim)
@@ -158,15 +159,15 @@ def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
     '''
     '''
 
-    assert check_road_link_direction(gdfRoadLink, gdfRoadNode)
+    fid_direction_dict = set_road_link_direction(gdfRoadLink, gdfRoadNode)
 
     gdf_itn = gdfRoadLink.copy()
-    gdf_itn['direction'] = '+'
+    gdf_itn['direction'] = gdf_itn['fid'].replace(fid_direction_dict)
 
     # Now create a duplicate set of links facing the other direction
     gdf_itn = gdf_itn.reindex(columns = ['fid', 'MNodeFID', 'PNodeFID', 'direction', 'geometry'])
     gdf_itn2 = gdf_itn.copy()
-    gdf_itn2['direction'] = '-'
+    gdf_itn2['direction'] = gdf_itn2['direction'].replace({'+':'-', '-':'+'})
     
     # Combine the two sets of links
     gdf_itn = pd.concat([gdf_itn, gdf_itn2])
@@ -191,7 +192,16 @@ def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
 
     return gdf_itn, gdfITNNode, dfedges
 
-def check_road_link_direction(gdfRoadLink, gdfRoadNode):
+def coord_match(c1, c2):
+    x_diff = abs(c1[0]-c2[0])
+    y_diff = abs(c1[1]-c2[1])
+
+    if (x_diff<0.000001) & (y_diff<0.000001):
+        return True
+    else:
+        return False
+
+def set_road_link_direction(gdfRoadLink, gdfRoadNode):
     '''Check that plaus and minus nodes match up with the end and start coordinates of road link linestrings
     '''
     gdf_itn = gdfRoadLink.copy()
@@ -215,15 +225,35 @@ def check_road_link_direction(gdfRoadLink, gdfRoadNode):
     gdf_itn['line_first_coord'] = gdf_itn['geometry'].map(lambda x: x.coords[0])
     gdf_itn['line_last_coord'] = gdf_itn['geometry'].map(lambda x: x.coords[-1])
 
-    # Check that the -,+ nodes match the first / last line string coords
-    gdf_itn['first_coords_match_minus_node'] = gdf_itn['line_first_coord'] == gdf_itn['geometry_minus_node'].map(lambda x: x.coords[0])
-    gdf_itn['last_coords_match_plus_node'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
+    # Check where the -,+ nodes match the first / last line string coords
+    gdf_itn['first_coords_match_minus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_minus_node'].coords[0]), axis=1)
+    gdf_itn['last_coords_match_plus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_plus_node'].coords[0]), axis=1)
 
-    assert gdf_itn['first_coords_match_minus_node'].all() == True
-    gdf_itn['last_coords_match_plus_node'].all() == True
+    # Also check where the -,+ nodes match the last / first coords
+    gdf_itn['first_coords_match_plus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_plus_node'].coords[0]), axis=1)
+    gdf_itn['last_coords_match_minus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_minus_node'].coords[0]), axis=1)
 
+    # Check that where the first coord doesn't match neither does the last, and visa versa
+    assert gdf_itn.loc[ (gdf_itn['first_coords_match_minus_node']==True) & (gdf_itn['last_coords_match_plus_node']==False) ].shape[0]==0
+    assert gdf_itn.loc[ (gdf_itn['first_coords_match_minus_node']==False) & (gdf_itn['last_coords_match_plus_node']==True) ].shape[0]==0
+
+    assert gdf_itn.loc[ (gdf_itn['first_coords_match_plus_node']==True) & (gdf_itn['last_coords_match_minus_node']==False) ].shape[0]==0
+    assert gdf_itn.loc[ (gdf_itn['first_coords_match_plus_node']==False) & (gdf_itn['last_coords_match_minus_node']==True) ].shape[0]==0
+
+    # Check that where - doesn't match first it matches last coord, and visa versa
+    assert gdf_itn.loc[ (gdf_itn['first_coords_match_minus_node']==False), 'first_coords_match_plus_node'].all()
+    assert gdf_itn.loc[ (gdf_itn['last_coords_match_plus_node']==False), 'last_coords_match_minus_node'].all()
+
+    # Now can set direction based on whether -/+ match first / last coord
+    gdf_itn['direction'] = np.nan
+    gdf_itn.loc[ gdf_itn['first_coords_match_minus_node']==True, 'direction'] = '+'
+    gdf_itn.loc[ gdf_itn['first_coords_match_plus_node']==True, 'direction'] = '-'
+
+    assert gdf_itn.direction.isnull().any()==False
+
+    output_dict = gdf_itn.set_index('fid')['direction'].to_dict()
     gdf_itn = None
-    return True
+    return output_dict
 
 def pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = 90, lane_width = 5, crs=projectCRS):
     # Node metadata

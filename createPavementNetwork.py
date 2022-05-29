@@ -182,10 +182,23 @@ def rays_between_angles(a1, a2, p1, sample_res = 10, ray_length = 50):
         l = LineString([p1,p2])
         yield l
 
+def coord_match(c1, c2):
+    x_diff = abs(c1[0]-c2[0])
+    y_diff = abs(c1[1]-c2[1])
+
+    if (x_diff<0.000001) & (y_diff<0.000001):
+        return True
+    else:
+        return False
+
 def linestring_bearing(l, start_point):
     if start_point.coords[0] == l.coords[0]:
         end_coord = np.array(l.coords[-1])
     elif start_point.coords[0] == l.coords[-1]:
+        end_coord = np.array(l.coords[0])
+    elif coord_match(start_point.coords[0], l.coords[0]):
+        end_coord = np.array(l.coords[-1])
+    elif coord_match(start_point.coords[0], l.coords[-1]):
         end_coord = np.array(l.coords[0])
     else:
         return None
@@ -224,11 +237,12 @@ def multiple_road_node_pedestrian_nodes_metadata(graph, gdfRoadNodes):
     dfPedNodes = pd.DataFrame()
 
     for road_node_id, road_node_geom in gdfRoadNodes.loc[:, ['node_fid', 'geometry']].values:
-        try:
-            df = road_node_pedestrian_nodes_metadata(graph, road_node_geom, road_node_id)
-            dfPedNodes = pd.concat([dfPedNodes, df])
-        except Exception as err:
-            print(road_node_id, road_node_geom)
+        #try:
+        df = road_node_pedestrian_nodes_metadata(graph, road_node_geom, road_node_id)
+        dfPedNodes = pd.concat([dfPedNodes, df])
+        #except Exception as err:
+        #    print(road_node_id, road_node_geom)
+        #    print(err)
 
     dfPedNodes.index = np.arange(dfPedNodes.shape[0])
     return dfPedNodes
