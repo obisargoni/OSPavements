@@ -71,7 +71,6 @@ class_rename_dict = {   'Unknown':'Unclassified',
 # Load the data
 #
 gdfORLink = gpd.read_file(output_or_link_file)
-#gdfORLink.drop('informalCr', axis=1, inplace=True)
 
 ###########################################
 #
