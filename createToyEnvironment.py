@@ -65,49 +65,68 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
     # loop over grid coords and create one horizontal and one vertical line for each point
     for i, x in enumerate(edges[0]):
         for j, y in enumerate(edges[1]):
-            c1 = [x, y]
-            c2 = [x+widths[0], y]
-            c3 = [x, y+widths[1]]
 
             c1_id = "node_{}_{}".format(i,j)
             c2_id = "node_{}_{}".format(i+1,j)
             c3_id = "node_{}_{}".format(i,j+1)
 
 
-            lh = LineString( [ c1, c2 ])
-            lv = LineString( [ c1, c3 ])
-
-
             if i<len(edges[0])-1:
+                # Check if nodes created yet and if not create
+                if c1_id in nodes['node_fid']:
+                    c1 = nodes['geometry'][nodes['node_fid'].index(c1_id)]
+                else:
+                    c1 = Point([int(np.round(x)), int(np.round(y))])
+                    nodes['geometry'].append(c1)
+                    nodes['node_fid'].append(c1_id)
+
+                if c2_id in nodes['node_fid']:
+                    c2 = nodes['geometry'][nodes['node_fid'].index(c2_id)]
+                else:
+                    c2 = Point([int(np.round(x+widths[0])), int(np.round(y))])
+                    nodes['geometry'].append(c2)
+                    nodes['node_fid'].append(c2_id)
+
+
+                lh = LineString( [ c1, c2 ])
+
                 data['geometry'].append(lh)
                 data['MNodeFID'].append(c1_id)
                 data['PNodeFID'].append(c2_id)
                 data['fid'].append("link_{}_{}".format(c1_id.replace("node_",""), c2_id.replace("node_","")))
 
-                for nid, nc in ( (c1_id, c1), (c2_id, c2) ):
-                    if nid not in nodes['node_fid']:
-                        nodes['node_fid'].append(nid)
-                        nodes['geometry'].append(Point(nc))
-
 
             if j<len(edges[1])-1:
+                # Check if nodes created yet and if not create
+                if c1_id in nodes['node_fid']:
+                    c1 = nodes['geometry'][nodes['node_fid'].index(c1_id)]
+                else:
+                    c1 = Point([int(np.round(x)), int(np.round(y))])
+                    nodes['geometry'].append(c1)
+                    nodes['node_fid'].append(c1_id)
+
+                if c3_id in nodes['node_fid']:
+                    c3 = nodes['geometry'][nodes['node_fid'].index(c3_id)]
+                else:
+                    c3 = Point([int(np.round(x)), int(np.round(y+widths[1]))])
+                    nodes['geometry'].append(c3)
+                    nodes['node_fid'].append(c3_id)
+
+                lv = LineString( [ c1, c3 ])
+
                 data['geometry'].append(lv)
                 data['MNodeFID'].append(c1_id)
                 data['PNodeFID'].append(c3_id)
                 data['fid'].append("link_{}_{}".format(c1_id.replace("node_",""), c3_id.replace("node_","")))
-
-                for nid, nc in ( (c1_id, c1), (c3_id, c3) ):
-                    if nid not in nodes['node_fid']:
-                        nodes['node_fid'].append(nid)
-                        nodes['geometry'].append(Point(nc))
 
 
     gdfGrid = gpd.GeoDataFrame(data, geometry='geometry', crs = crs)
     gdfGrid['pedRLID'] = gdfGrid['fid']
     gdfGrid['weight'] = gdfGrid['geometry'].length
 
+    #nodes['geometry'] = [Point(c) for c in nodes['geometry']]
     gdfGridNodes = gpd.GeoDataFrame(nodes, geometry='geometry', crs = crs)
-    gdfGridNodes.drop_duplicates(subset = 'geometry', inplace=True)
+    #gdfGridNodes.drop_duplicates(subset = 'geometry', inplace=True)
     assert gdfGridNodes['node_fid'].duplicated().any()==False
 
     return gdfGrid, gdfGridNodes
@@ -162,7 +181,7 @@ def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
     fid_direction_dict = set_road_link_direction(gdfRoadLink, gdfRoadNode)
 
     gdf_itn = gdfRoadLink.copy()
-    gdf_itn['direction'] = gdf_itn['fid'].replace(fid_direction_dict)
+    gdf_itn['direction'] = '+'#gdf_itn['fid'].replace(fid_direction_dict)
 
     # Now create a duplicate set of links facing the other direction
     gdf_itn = gdf_itn.reindex(columns = ['fid', 'MNodeFID', 'PNodeFID', 'direction', 'geometry'])
@@ -226,28 +245,35 @@ def set_road_link_direction(gdfRoadLink, gdfRoadNode):
     gdf_itn['line_last_coord'] = gdf_itn['geometry'].map(lambda x: x.coords[-1])
 
     # Check where the -,+ nodes match the first / last line string coords
-    gdf_itn['first_coords_match_minus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_minus_node'].coords[0]), axis=1)
-    gdf_itn['last_coords_match_plus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_plus_node'].coords[0]), axis=1)
+    gdf_itn['fmm'] = gdf_itn['line_first_coord'] == gdf_itn['geometry_minus_node'].map(lambda x: x.coords[0])
+    gdf_itn['lmp'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
+
+    #gdf_itn['fmm'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_minus_node'].coords[0]), axis=1)
+    #gdf_itn['lmp'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_plus_node'].coords[0]), axis=1)
 
     # Also check where the -,+ nodes match the last / first coords
-    gdf_itn['first_coords_match_plus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_plus_node'].coords[0]), axis=1)
-    gdf_itn['last_coords_match_minus_node'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_minus_node'].coords[0]), axis=1)
+    gdf_itn['fmp'] = gdf_itn['line_first_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
+    gdf_itn['lmm'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_minus_node'].map(lambda x: x.coords[0])
 
-    # Check that where the first coord doesn't match neither does the last, and visa versa
-    assert gdf_itn.loc[ (gdf_itn['first_coords_match_minus_node']==True) & (gdf_itn['last_coords_match_plus_node']==False) ].shape[0]==0
-    assert gdf_itn.loc[ (gdf_itn['first_coords_match_minus_node']==False) & (gdf_itn['last_coords_match_plus_node']==True) ].shape[0]==0
+    #gdf_itn['fmp'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_plus_node'].coords[0]), axis=1)
+    #gdf_itn['lmm'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_minus_node'].coords[0]), axis=1)
 
-    assert gdf_itn.loc[ (gdf_itn['first_coords_match_plus_node']==True) & (gdf_itn['last_coords_match_minus_node']==False) ].shape[0]==0
-    assert gdf_itn.loc[ (gdf_itn['first_coords_match_plus_node']==False) & (gdf_itn['last_coords_match_minus_node']==True) ].shape[0]==0
+    # Check that where the first coord matches minus node, the last coord matches plus
+    assert gdf_itn.loc[ (gdf_itn['fmm']==True) & (gdf_itn['lmp']==True) ].shape[0]==gdf_itn.shape[0]
+    assert gdf_itn.loc[ (gdf_itn['fmm']==False) & (gdf_itn['lmm']==False) ].shape[0]==0
+
+    # Similar check the otherway round, phrases slightly differently
+    assert gdf_itn.loc[ (gdf_itn['fmp']==True) & (gdf_itn['lmm']==False) ].shape[0]==0
+    assert gdf_itn.loc[ (gdf_itn['fmp']==False) & (gdf_itn['lmm']==True) ].shape[0]==0
 
     # Check that where - doesn't match first it matches last coord, and visa versa
-    assert gdf_itn.loc[ (gdf_itn['first_coords_match_minus_node']==False), 'first_coords_match_plus_node'].all()
-    assert gdf_itn.loc[ (gdf_itn['last_coords_match_plus_node']==False), 'last_coords_match_minus_node'].all()
+    assert gdf_itn.loc[ (gdf_itn['fmm']==False), 'fmp'].all()
+    assert gdf_itn.loc[ (gdf_itn['lmp']==False), 'lmm'].all()
 
     # Now can set direction based on whether -/+ match first / last coord
     gdf_itn['direction'] = np.nan
-    gdf_itn.loc[ gdf_itn['first_coords_match_minus_node']==True, 'direction'] = '+'
-    gdf_itn.loc[ gdf_itn['first_coords_match_plus_node']==True, 'direction'] = '-'
+    gdf_itn.loc[ gdf_itn['fmm']==True, 'direction'] = '+'
+    gdf_itn.loc[ gdf_itn['fmp']==True, 'direction'] = '-'
 
     assert gdf_itn.direction.isnull().any()==False
 

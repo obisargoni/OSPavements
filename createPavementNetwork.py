@@ -196,10 +196,6 @@ def linestring_bearing(l, start_point):
         end_coord = np.array(l.coords[-1])
     elif start_point.coords[0] == l.coords[-1]:
         end_coord = np.array(l.coords[0])
-    elif coord_match(start_point.coords[0], l.coords[0]):
-        end_coord = np.array(l.coords[-1])
-    elif coord_match(start_point.coords[0], l.coords[-1]):
-        end_coord = np.array(l.coords[0])
     else:
         return None
 
