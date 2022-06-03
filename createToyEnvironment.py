@@ -26,15 +26,27 @@ def environment_polygon(environment_limits):
     poly_points, order = zip(*z)
     return Polygon(poly_points)
 
-def create_grid_road_network(environment_limits, block_size, crs = projectCRS):
+def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
     '''
     envrionment_limits: tupule of min and max limit for each environment direction.
     block_size: length of road link
     '''
 
+    # Innput num_nodes is the desires number, but actual number of road nodes will be a square number. Find the closest possible square number
+    n_blocks_min = int(np.floor(np.sqrt(num_nodes))) 
+    n_blocks_max = n_blocks_min+1
+
+    if abs(num_nodes - n_blocks_min**2) < abs(num_nodes - n_blocks_max**2):
+        ntiles = n_blocks_min - 1 # -1 bc number of nodes in each direction is one more than number of blocks
+    else:
+        ntiles = n_blocks_max - 1
+
+    print(ntiles)
+
     ndim = len(environment_limits)
-    ntiles = [ int( (lim[1]-lim[0]) / block_size) for lim in environment_limits]
-    N = np.product(ntiles)
+    ntiles = np.array([ntiles]*ndim)
+
+    #ntiles = [ int( (lim[1]-lim[0]) / block_size) for lim in environment_limits]
 
     edges_and_widths = [np.linspace(environment_limits[i][0], environment_limits[i][1],
                                     ntiles[i]+1, retstep=True)
@@ -53,60 +65,78 @@ def create_grid_road_network(environment_limits, block_size, crs = projectCRS):
     # loop over grid coords and create one horizontal and one vertical line for each point
     for i, x in enumerate(edges[0]):
         for j, y in enumerate(edges[1]):
-            c1 = [x, y]
-            c2 = [x+widths[0], y]
-            c3 = [x, y+widths[1]]
 
             c1_id = "node_{}_{}".format(i,j)
             c2_id = "node_{}_{}".format(i+1,j)
             c3_id = "node_{}_{}".format(i,j+1)
 
 
-            lh = LineString( [ c1, c2 ])
-            lv = LineString( [ c1, c3 ])
-
-
             if i<len(edges[0])-1:
+                # Check if nodes created yet and if not create
+                if c1_id in nodes['node_fid']:
+                    c1 = nodes['geometry'][nodes['node_fid'].index(c1_id)]
+                else:
+                    c1 = Point([int(np.round(x)), int(np.round(y))])
+                    nodes['geometry'].append(c1)
+                    nodes['node_fid'].append(c1_id)
+
+                if c2_id in nodes['node_fid']:
+                    c2 = nodes['geometry'][nodes['node_fid'].index(c2_id)]
+                else:
+                    c2 = Point([int(np.round(x+widths[0])), int(np.round(y))])
+                    nodes['geometry'].append(c2)
+                    nodes['node_fid'].append(c2_id)
+
+
+                lh = LineString( [ c1, c2 ])
+
                 data['geometry'].append(lh)
                 data['MNodeFID'].append(c1_id)
                 data['PNodeFID'].append(c2_id)
                 data['fid'].append("link_{}_{}".format(c1_id.replace("node_",""), c2_id.replace("node_","")))
 
-                for nid, nc in ( (c1_id, c1), (c2_id, c2) ):
-                    if nid not in nodes['node_fid']:
-                        nodes['node_fid'].append(nid)
-                        nodes['geometry'].append(Point(nc))
-
 
             if j<len(edges[1])-1:
+                # Check if nodes created yet and if not create
+                if c1_id in nodes['node_fid']:
+                    c1 = nodes['geometry'][nodes['node_fid'].index(c1_id)]
+                else:
+                    c1 = Point([int(np.round(x)), int(np.round(y))])
+                    nodes['geometry'].append(c1)
+                    nodes['node_fid'].append(c1_id)
+
+                if c3_id in nodes['node_fid']:
+                    c3 = nodes['geometry'][nodes['node_fid'].index(c3_id)]
+                else:
+                    c3 = Point([int(np.round(x)), int(np.round(y+widths[1]))])
+                    nodes['geometry'].append(c3)
+                    nodes['node_fid'].append(c3_id)
+
+                lv = LineString( [ c1, c3 ])
+
                 data['geometry'].append(lv)
                 data['MNodeFID'].append(c1_id)
                 data['PNodeFID'].append(c3_id)
                 data['fid'].append("link_{}_{}".format(c1_id.replace("node_",""), c3_id.replace("node_","")))
-
-                for nid, nc in ( (c1_id, c1), (c3_id, c3) ):
-                    if nid not in nodes['node_fid']:
-                        nodes['node_fid'].append(nid)
-                        nodes['geometry'].append(Point(nc))
 
 
     gdfGrid = gpd.GeoDataFrame(data, geometry='geometry', crs = crs)
     gdfGrid['pedRLID'] = gdfGrid['fid']
     gdfGrid['weight'] = gdfGrid['geometry'].length
 
+    #nodes['geometry'] = [Point(c) for c in nodes['geometry']]
     gdfGridNodes = gpd.GeoDataFrame(nodes, geometry='geometry', crs = crs)
-    gdfGridNodes.drop_duplicates(subset = 'geometry', inplace=True)
+    #gdfGridNodes.drop_duplicates(subset = 'geometry', inplace=True)
     assert gdfGridNodes['node_fid'].duplicated().any()==False
 
     return gdfGrid, gdfGridNodes
 
-def create_quad_grid_road_network(environment_limits, block_size, crs = projectCRS):
+def create_quad_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
 
     grid_size = environment_limits[0][1]+1
-    num_nodes = (int(grid_size/block_size)**2) *2
 
     # run the quad tree
-    sys.path.append("C:\\Users\\Obi Sargoni\\Documents\\CASA\\road-network\\rng\\")
+    sys.path.append("C:\\Users\\obisargoni\\Documents\\CASA\\road-network\\rng\\")
     from network_gen import main
     main(size=grid_size, max_nodes=num_nodes, seed=2, outdir = "")
 
@@ -148,15 +178,15 @@ def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
     '''
     '''
 
-    assert check_road_link_direction(gdfRoadLink, gdfRoadNode)
+    fid_direction_dict = set_road_link_direction(gdfRoadLink, gdfRoadNode)
 
     gdf_itn = gdfRoadLink.copy()
-    gdf_itn['direction'] = '+'
+    gdf_itn['direction'] = '+'#gdf_itn['fid'].replace(fid_direction_dict)
 
     # Now create a duplicate set of links facing the other direction
     gdf_itn = gdf_itn.reindex(columns = ['fid', 'MNodeFID', 'PNodeFID', 'direction', 'geometry'])
     gdf_itn2 = gdf_itn.copy()
-    gdf_itn2['direction'] = '-'
+    gdf_itn2['direction'] = gdf_itn2['direction'].replace({'+':'-', '-':'+'})
     
     # Combine the two sets of links
     gdf_itn = pd.concat([gdf_itn, gdf_itn2])
@@ -181,7 +211,16 @@ def create_vehicle_road_network(gdfRoadLink, gdfRoadNode):
 
     return gdf_itn, gdfITNNode, dfedges
 
-def check_road_link_direction(gdfRoadLink, gdfRoadNode):
+def coord_match(c1, c2):
+    x_diff = abs(c1[0]-c2[0])
+    y_diff = abs(c1[1]-c2[1])
+
+    if (x_diff<0.000001) & (y_diff<0.000001):
+        return True
+    else:
+        return False
+
+def set_road_link_direction(gdfRoadLink, gdfRoadNode):
     '''Check that plaus and minus nodes match up with the end and start coordinates of road link linestrings
     '''
     gdf_itn = gdfRoadLink.copy()
@@ -205,15 +244,42 @@ def check_road_link_direction(gdfRoadLink, gdfRoadNode):
     gdf_itn['line_first_coord'] = gdf_itn['geometry'].map(lambda x: x.coords[0])
     gdf_itn['line_last_coord'] = gdf_itn['geometry'].map(lambda x: x.coords[-1])
 
-    # Check that the -,+ nodes match the first / last line string coords
-    gdf_itn['first_coords_match_minus_node'] = gdf_itn['line_first_coord'] == gdf_itn['geometry_minus_node'].map(lambda x: x.coords[0])
-    gdf_itn['last_coords_match_plus_node'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
+    # Check where the -,+ nodes match the first / last line string coords
+    gdf_itn['fmm'] = gdf_itn['line_first_coord'] == gdf_itn['geometry_minus_node'].map(lambda x: x.coords[0])
+    gdf_itn['lmp'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
 
-    assert gdf_itn['first_coords_match_minus_node'].all() == True
-    gdf_itn['last_coords_match_plus_node'].all() == True
+    #gdf_itn['fmm'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_minus_node'].coords[0]), axis=1)
+    #gdf_itn['lmp'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_plus_node'].coords[0]), axis=1)
 
+    # Also check where the -,+ nodes match the last / first coords
+    gdf_itn['fmp'] = gdf_itn['line_first_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
+    gdf_itn['lmm'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_minus_node'].map(lambda x: x.coords[0])
+
+    #gdf_itn['fmp'] = gdf_itn.apply(lambda row: coord_match( row['line_first_coord'], row['geometry_plus_node'].coords[0]), axis=1)
+    #gdf_itn['lmm'] = gdf_itn.apply(lambda row: coord_match( row['line_last_coord'], row['geometry_minus_node'].coords[0]), axis=1)
+
+    # Check that where the first coord matches minus node, the last coord matches plus
+    assert gdf_itn.loc[ (gdf_itn['fmm']==True) & (gdf_itn['lmp']==True) ].shape[0]==gdf_itn.shape[0]
+    assert gdf_itn.loc[ (gdf_itn['fmm']==False) & (gdf_itn['lmm']==False) ].shape[0]==0
+
+    # Similar check the otherway round, phrases slightly differently
+    assert gdf_itn.loc[ (gdf_itn['fmp']==True) & (gdf_itn['lmm']==False) ].shape[0]==0
+    assert gdf_itn.loc[ (gdf_itn['fmp']==False) & (gdf_itn['lmm']==True) ].shape[0]==0
+
+    # Check that where - doesn't match first it matches last coord, and visa versa
+    assert gdf_itn.loc[ (gdf_itn['fmm']==False), 'fmp'].all()
+    assert gdf_itn.loc[ (gdf_itn['lmp']==False), 'lmm'].all()
+
+    # Now can set direction based on whether -/+ match first / last coord
+    gdf_itn['direction'] = np.nan
+    gdf_itn.loc[ gdf_itn['fmm']==True, 'direction'] = '+'
+    gdf_itn.loc[ gdf_itn['fmp']==True, 'direction'] = '-'
+
+    assert gdf_itn.direction.isnull().any()==False
+
+    output_dict = gdf_itn.set_index('fid')['direction'].to_dict()
     gdf_itn = None
-    return True
+    return output_dict
 
 def pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = 90, lane_width = 5, crs=projectCRS):
     # Node metadata
@@ -361,8 +427,8 @@ output_edgelist_file = os.path.join(gis_data_dir, "itn_route_info", "itn_edge_li
 output_boundary_file = os.path.join(output_directory, config['boundary_file'])
 
 study_area_dist = config['study_area_dist']
-environment_limits = ( (0,study_area_dist), (0,study_area_dist) )
-block_size = config['block_size']
+environment_limits = ( (0,study_area_dist*2), (0,study_area_dist*2) )
+num_nodes = config['num_nodes']
 lane_width = 5
 pavement_width = 3
 angle_range = 90
@@ -378,9 +444,9 @@ angle_range = 90
 env_poly = environment_polygon(environment_limits)
 
 if config['grid_type'] == 'quad':
-    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, block_size)
+    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, num_nodes)
 else:
-    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, block_size)
+    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, num_nodes)
 
 # Create version of the road network vehicles travel on
 gdfITNLink, gdfITNNode, dfedges = create_vehicle_road_network(gdfRoadLink, gdfRoadNode)

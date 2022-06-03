@@ -108,7 +108,7 @@ gdf_itn['first_coords_match_minus_node'] = gdf_itn['line_first_coord'] == gdf_it
 gdf_itn['last_coords_match_plus_node'] = gdf_itn['line_last_coord'] == gdf_itn['geometry_plus_node'].map(lambda x: x.coords[0])
 
 assert gdf_itn['first_coords_match_minus_node'].all() == True
-gdf_itn['last_coords_match_plus_node'].all() == True
+assert gdf_itn['last_coords_match_plus_node'].all() == True
 
 gdf_itn = None
 

@@ -3,12 +3,12 @@
   "centre_poi_ref": 123101690,
   "study_area_dist": 1000,
   "flows_seed": 1,
-  "prop_ped_poly_ods":0.3,
+  "prop_ped_poly_ods":0.7,
 
   "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\NorthamptonStimpson",
   "batch_data_dir": "..\\output\\batch\\model_run_data",
 
-  "or_links_exclude_ped_ods": [],
+  "or_links_exclude_ped_ods": ["or_link_315"],
   "manual_pedestrian_polygon_fids": [],
 
   "mastermap_itn_link_file": "mastermap-itn_4550581\\sp_RoadLink.gml",

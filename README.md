@@ -40,6 +40,10 @@ Given the road nodes to use as vehicle ODs this procudes random flows between OD
 
 Very simple script to generate random flows between pedestrian ODs
 
+8. processCrossingAlternatives.py
+
+Create teh crossing infrastructure
+
 
 ## How to create a toy environment
 
