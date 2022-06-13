@@ -66,3 +66,7 @@ Creates the pedestrian ODs and the flows between them
 5. processCrossingAlternatives.py
 
 Create teh crossing infrastructure
+
+6. informalCrossingRoadLinkAttribute.py
+
+Sets certain links to restrict informal crossing
