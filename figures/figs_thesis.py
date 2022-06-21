@@ -27,7 +27,7 @@ with open("figure_config.json") as f:
 
 img_dir = "./thesis_images"
 
-output_thesis_low_level_exp_path = os.path.join(img_dir, "sigspatial_replicate_configuration.png")
+output_thesis_low_level_exp_path = os.path.join(img_dir, "low_level_gis_env.png")
 
 
 # class_rename_dict is taken from the 'pavenet_centrality.py' script
