@@ -53,8 +53,8 @@ def subplot_road_network(f, ax, gdfORLink, class_col, title, inset_rec, config):
     axins.tick_params(axis=u'both', which=u'both',length=0, pad=20)
     axins.set_xticks(x + + bar_width / 2)
     labels = list(dfTypeCount.index.str.replace("_", " "))
-    labels[-1] = labels[-1] + " (m)"
-    axins.set_xticklabels(labels, fontdict = {'fontsize':12})
+    labels[-1] = labels[-1] + " /m"
+    axins.set_xticklabels(labels, fontdict = {'fontsize':15})
 
     # Add bar labels
     # For each bar in the chart, add a text label.
@@ -73,7 +73,7 @@ def subplot_road_network(f, ax, gdfORLink, class_col, title, inset_rec, config):
             # get the color like so:
             bar_color = bar.get_facecolor()
             # If you want a consistent color, you can just set it as a constant, e.g. #222222
-            a.text(text_x, text_y, text, ha='center', va='bottom', color=bar_color, size=12)
+            a.text(text_x, text_y, text, ha='center', va='bottom', color=bar_color, size=15)
 
     # Remove lines
     for a in insets:
@@ -93,9 +93,9 @@ def subplot_road_network(f, ax, gdfORLink, class_col, title, inset_rec, config):
 
     # Add hack scale bar
     trans = tfrms.blended_transform_factory( ax.transAxes, ax.transAxes )
-    ax.errorbar( xmin+500, ymin-60, xerr=500, color='white', capsize=5)
-    ax.text( xmin+500, ymin-60-10, '500m',  horizontalalignment='center', verticalalignment='top')
-    ax.set_title(title, y=-0.2, fontdict={'fontsize':15})
+    ax.errorbar( xmin+250, ymin-60, xerr=250, color='white', capsize=5)
+    ax.text( xmin+250, ymin-60-10, '500m',  horizontalalignment='center', verticalalignment='top', fontsize=15)
+    ax.set_title(title, y=-0.2, fontdict={'fontsize':25})
 
     return ax
 
@@ -103,10 +103,10 @@ def figure_road_network(gdfs, class_col, titles, inset_rects, config):
     '''Plot the road network for the study area, highlighting the residential roads.
     '''
     nplots = len(titles)
-    f, axs = plt.subplots(1,nplots, figsize = (10*nplots,15))
+    f, axs = plt.subplots(1,nplots, figsize = (10*nplots,12))
     for i, gdfORLink in enumerate(gdfs):
         ax = subplot_road_network(f, axs[i], gdfORLink, class_col, titles[i], inset_rects[i], config)
-    f.suptitle("Restricted and non-restricted roads in study area", fontsize = 20)
+    f.suptitle("Restricted and non-restricted roads in model environments", fontsize = 30)
     #plt.tight_layout()
     return f
     
@@ -127,10 +127,10 @@ with open("figure_config.json") as f:
 img_dir = "./thesis_images/"
 output_road_network_fig_path = os.path.join(img_dir, "road_networks.png")
 
-with open("../configs/config_toygrid_block_263nodes.json") as f:
+with open("../configs/config_toygrid_block_169nodes.json") as f:
     uniform_config = json.load(f)
 
-with open("../configs/config_quadgrid_block_263nodes.json") as f:
+with open("../configs/config_quadgrid_block100.json") as f:
     quad_config = json.load(f)
 
 with open("../configs/config_claphamcommon.json") as f:
@@ -148,8 +148,6 @@ gdfORLinkCC = gpd.read_file(cc_road_link_file)
 #cpn.gdfORLink['class'] = cpn.gdfORLink['class'].replace(class_rename_dict)
 #assert cpn.gdfORLink.loc[ ~cpn.gdfORLink['class'].isin(['Unclassified','A Road','B Road', 'Classified Unnumbered'])].shape[0] == 0
 
-
-
 #################################
 #
 #
@@ -159,18 +157,18 @@ gdfORLinkCC = gpd.read_file(cc_road_link_file)
 #################################
 
 class_col = 'infCross'
-'''
+
 gdfs = [gdfORLinkUniform, gdfORLinkQuad, gdfORLinkCC]
 titles = ['Uniform Grid', 'Quad Grid', 'Clapham Common']
-error_bar_locs = [(500,-20),  (528680, 174545)]
-inset_rects = [ [0.0, 0.65, 0.1, 0.1], [0.3, 0.65, 0.1, 0.1],  [0.6, 0.65, 0.1, 0.1]]
-'''
+error_bar_locs = [(500,-20), (500,-20),  (528680, 174545)]
+inset_rects = [ [0.05, 0.65, 0.1, 0.15], [0.35, 0.65, 0.1, 0.15], [0.65, 0.65, 0.1, 0.15] ]
 
+'''
 gdfs = [gdfORLinkUniform, gdfORLinkCC]
 titles = ['Uniform Grid', 'Clapham Common']
 error_bar_locs = [(500,-20),  (528680, 174545)]
 inset_rects = [ [0.0, 0.65, 0.2, 0.1], [0.5, 0.65, 0.2, 0.1]]
-
+'''
 
 f_road = figure_road_network(gdfs, class_col, titles, inset_rects, fig_config)
 f_road.savefig(output_road_network_fig_path)
