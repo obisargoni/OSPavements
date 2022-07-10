@@ -517,12 +517,13 @@ def connect_ped_nodes(gdfPN, gdfRoadLink, road_graph):
             ped_edge = {'MNodeFID':ped_u, 'PNodeFID':ped_v, 'pedRLID':None, 'linkType':'pavement', 'pedRoadID':None, 'fid':edge_id, 'geometry':l}
 
             # Check whether links crosses road or not
+            intersect_check = gdfLinkSub['geometry'].map(lambda g: g.intersects(l))
             if j_u==j_v:
                 # Nodes belong to same junction node, must require crossing to move between them
-                ped_edge['pedRLID'] = rl_id
+                ped_edge['pedRLID'] = " ".join(gdfLinkSub.loc[intersect_check, 'fid'])
                 ped_edge['linkType'] = 'direct_cross'
+
             else:
-                intersect_check = gdfLinkSub['geometry'].map(lambda g: g.intersects(l))
                 if intersect_check.any():
                     ped_edge['pedRLID'] = " ".join(gdfLinkSub.loc[intersect_check, 'fid'])
 
@@ -636,6 +637,15 @@ def repair_non_crossing_links(road_link_ids, gdfPN, gdfPL):
                     gdfPL.loc[ix, 'pedRLID']=None
                     gdfPL.loc[ix, 'linkType']='pavement'
                     print("Corrected no crossing edge {}".format(gdfPL.loc[ix, 'fid']))
+
+        # Check numbers of crossing and non crossing links are as expected
+        no_cross_edge_nodes = gdfPedEdgesSub.loc[ gdfPedEdgesSub['pedRLID'].isnull(), ['MNodeFID','PNodeFID']].values
+        cross_edge_nodes = gdfPedEdgesSub.loc[ ~gdfPedEdgesSub['pedRLID'].isnull(), ['MNodeFID','PNodeFID']].values
+        if ( (len(no_cross_edge_nodes)!=2) | (len(cross_edge_nodes)!=4)):
+            print("WARNING: road Link {} does not have expected pavemetn links".format(rl_id))
+
+
+
     return gdfPL
 
 def load_data():
