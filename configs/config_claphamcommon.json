@@ -7,6 +7,13 @@
   "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\Clapham Common",
   "batch_data_dir": "..\\output\\batch\\model_run_data",
 
+  "no_informal_crossing_links":[
+                                "or_link_164",
+                                "or_link_229",
+                                "or_link_313",
+                                "or_link_81"
+  ],
+
   "or_links_exclude_ped_ods": ["or_link_330", "or_link_249", "or_link_248", "or_link_52", "or_link_11"],
   "manual_pedestrian_polygon_fids": ["osgb1000001796202393"],
 
