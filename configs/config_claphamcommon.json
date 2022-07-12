@@ -16,6 +16,7 @@
 
   "or_links_exclude_ped_ods": ["or_link_330", "or_link_249", "or_link_248", "or_link_52", "or_link_11"],
   "manual_pedestrian_polygon_fids": ["osgb1000001796202393"],
+  "manual_marked_crossings":["pave_link_117_118"],
 
   "mastermap_itn_file": "mastermap-itn_4041132\\mastermap-itn_4041132_0.gml.gz",
   "open_roads_link_file": "open-roads_4041135\\TQ_RoadLink.shp",

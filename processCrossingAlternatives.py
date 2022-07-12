@@ -110,6 +110,11 @@ def unsignalised_crossing_node_from_junction_node(dfJunctionNodes, tolerance=0.3
 
 	return pd.DataFrame(data)
 
+def manual_crossing_data(gdfPaveLink, link_ids_to_make_crossings):
+	gdf = gdfPaveLink.loc[ gdfPaveLink['fid'].isin(link_ids_to_make_crossings), ['MNodeFID', 'PNodeFID','pedRLID','geometry']]
+	gdf.rename(columns = {'MNodeFID':'u', 'PNodeFID':'v','pedRLID':'roadLinkID'}, inplace=True)
+	return gdf
+
 #################################
 #
 #
@@ -134,6 +139,11 @@ for tolerance in np.linspace(0.1,0.9,5):
 	tolerance = np.round(tolerance, 1)
 
 	dfUC = gdfPaveNode.groupby('juncNodeID').apply(unsignalised_crossing_node_from_junction_node, tolerance=tolerance)
+
+	if 'manual_marked_crossings' in config.keys():
+		dfUCManual = manual_crossing_data(gdfPaveLink, config['manual_marked_crossings'])
+		dfUC = pd.concat([dfUC, dfUCManual])
+	dfUC.index = np.arange(dfUC.shape[0])
 
 	# Check whether the pedestrian network remains a single connected component with crossing links without crossing infrastructure removed
 	roads_with_crossings = dfUC['roadLinkID'].values
