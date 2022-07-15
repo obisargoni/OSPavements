@@ -86,7 +86,7 @@ if 'class' in gdfORLink:
 	gdfORLink['class'] = gdfORLink['class'].replace(class_rename_dict)
 	assert gdfORLink.loc[ ~gdfORLink['class'].isin(['Unclassified','A Road','B Road', 'Classified Unnumbered'])].shape[0] == 0
 
-	no_informal_crossing_links = gdfORLink.loc[ gdfORLink['class'].isin(['A Road', 'B Road']), 'fid'].tolist()
+	no_informal_crossing_links = gdfORLink.loc[ gdfORLink['class'].isin(['A Road']), 'fid'].tolist()
 	no_informal_crossing_links+= config['no_informal_crossing_links']
 else:
 	no_informal_crossing_links = config['no_informal_crossing_links']
