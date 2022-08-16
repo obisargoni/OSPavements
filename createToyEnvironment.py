@@ -27,7 +27,7 @@ def environment_polygon(environment_limits):
     poly_points, order = zip(*z)
     return Polygon(poly_points)
 
-def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
+def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS, dx=1, dy=1):
     '''
     envrionment_limits: tupule of min and max limit for each environment direction.
     block_size: length of road link
@@ -50,11 +50,18 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
     #ntiles = [ int( (lim[1]-lim[0]) / block_size) for lim in environment_limits]
 
     edges_and_widths = [np.linspace(environment_limits[i][0], environment_limits[i][1],
-                                    ntiles[i]+1, retstep=True)
+                                    ntiles[i]+dx, retstep=True)
                         for i in range(ndim)]
 
-    edges = [ew[0] for ew in edges_and_widths]
-    widths = [ew[1] for ew in edges_and_widths]
+    edgesx = [ew[0] for ew in edges_and_widths]
+    widthsx = [ew[1] for ew in edges_and_widths]
+
+    edges_and_widths = [np.linspace(environment_limits[i][0], environment_limits[i][1],
+                                ntiles[i]+dy, retstep=True)
+                    for i in range(ndim)]
+
+    edgesy = [ew[0] for ew in edges_and_widths]
+    widthsy = [ew[1] for ew in edges_and_widths]
 
     data = {'geometry':[],
             'MNodeFID':[],
@@ -64,15 +71,15 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
                 'geometry':[]}
 
     # loop over grid coords and create one horizontal and one vertical line for each point
-    for i, x in enumerate(edges[0]):
-        for j, y in enumerate(edges[1]):
+    for i, x in enumerate(edgesx[0]):
+        for j, y in enumerate(edgesy[1]):
 
             c1_id = "node_{}_{}".format(i,j)
             c2_id = "node_{}_{}".format(i+1,j)
             c3_id = "node_{}_{}".format(i,j+1)
 
 
-            if i<len(edges[0])-1:
+            if i<len(edgesx[0])-1:
                 # Check if nodes created yet and if not create
                 if c1_id in nodes['node_fid']:
                     c1 = nodes['geometry'][nodes['node_fid'].index(c1_id)]
@@ -84,7 +91,7 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
                 if c2_id in nodes['node_fid']:
                     c2 = nodes['geometry'][nodes['node_fid'].index(c2_id)]
                 else:
-                    c2 = Point([int(np.round(x+widths[0])), int(np.round(y))])
+                    c2 = Point([int(np.round(x+widthsx[0])), int(np.round(y))])
                     nodes['geometry'].append(c2)
                     nodes['node_fid'].append(c2_id)
 
@@ -97,7 +104,7 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
                 data['fid'].append("link_{}_{}".format(c1_id.replace("node_",""), c2_id.replace("node_","")))
 
 
-            if j<len(edges[1])-1:
+            if j<len(edgesy[1])-1:
                 # Check if nodes created yet and if not create
                 if c1_id in nodes['node_fid']:
                     c1 = nodes['geometry'][nodes['node_fid'].index(c1_id)]
@@ -109,7 +116,7 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
                 if c3_id in nodes['node_fid']:
                     c3 = nodes['geometry'][nodes['node_fid'].index(c3_id)]
                 else:
-                    c3 = Point([int(np.round(x)), int(np.round(y+widths[1]))])
+                    c3 = Point([int(np.round(x)), int(np.round(y+widthsy[1]))])
                     nodes['geometry'].append(c3)
                     nodes['node_fid'].append(c3_id)
 
@@ -456,7 +463,7 @@ env_poly = environment_polygon(environment_limits)
 if config['grid_type'] == 'quad':
     gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, num_nodes, seed=20)
 else:
-    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, num_nodes)
+    gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, num_nodes, dx=config['nblocksx'], dy=config['nblocksy'])
 
 # Load the Open Roads road network as a nx graph
 road_graph = nx.MultiGraph()
