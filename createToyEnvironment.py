@@ -13,6 +13,7 @@ import itertools
 import re
 import itertools
 
+from processRoadNetworkData import largest_connected_component_nodes_within_dist
 import createPavementNetwork as cpn
 
 projectCRS = {'init' :'epsg:27700'}
@@ -131,14 +132,14 @@ def create_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
 
     return gdfGrid, gdfGridNodes
 
-def create_quad_grid_road_network(environment_limits, num_nodes, crs = projectCRS):
+def create_quad_grid_road_network(environment_limits, num_nodes, crs = projectCRS, seed=2):
 
     grid_size = environment_limits[0][1]+1
 
     # run the quad tree
     sys.path.append("C:\\Users\\obisargoni\\Documents\\CASA\\road-network\\rng\\")
     from network_gen import main
-    main(size=grid_size, max_nodes=num_nodes, seed=2, outdir = "")
+    main(size=grid_size, max_nodes=num_nodes, seed=seed, outdir = "")
 
     edges_path = "edge-list"
     nodes_path = "node-list"
@@ -158,7 +159,7 @@ def create_quad_grid_road_network(environment_limits, num_nodes, crs = projectCR
     dfE = pd.merge(dfE, dfN, left_on = 'PNodeFID', right_on = 'node_fid', suffixes = ("_u", "_v"))
     dfE.drop(['node_fid_u','node_fid_v','x_u','y_u','x_v','y_v'], axis=1, inplace=True)
     dfE['geometry'] = dfE.apply(lambda row: LineString([row['p_u'], row['p_v']]), axis=1)
-    dfE['length'] = dfE['geometry'].map(lambda g: g.length)
+    dfE['weight'] = dfE['geometry'].map(lambda g: g.length)
     dfE.drop(['p_u', 'p_v'], axis=1, inplace=True)
 
     dfN.rename(columns={'p':'geometry'}, inplace=True)
@@ -426,8 +427,11 @@ output_edgelist_file = os.path.join(gis_data_dir, "itn_route_info", "itn_edge_li
 
 output_boundary_file = os.path.join(output_directory, config['boundary_file'])
 
-study_area_dist = config['study_area_dist']
-environment_limits = ( (0,study_area_dist*2), (0,study_area_dist*2) )
+poi_file = os.path.join(gis_data_dir, config["poi_file"])
+centre_poi_ref = config["centre_poi_ref"]
+
+environment_size = config['environment_size']
+environment_limits = ( (0,environment_size*2), (0,environment_size*2) )
 num_nodes = config['num_nodes']
 lane_width = 5
 pavement_width = 3
@@ -441,10 +445,16 @@ angle_range = 90
 #
 #
 ##################################
+
+# Load pois and get centre poi geometry
+gdfPOIs = gpd.read_file(poi_file)
+centre_poi = gdfPOIs.loc[gdfPOIs['ref_no'] == config['centre_poi_ref']] 
+centre_poi_geom = centre_poi['geometry'].values[0]
+
 env_poly = environment_polygon(environment_limits)
 
 if config['grid_type'] == 'quad':
-    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, num_nodes)
+    gdfRoadLink, gdfRoadNode = create_quad_grid_road_network(environment_limits, num_nodes, seed=20)
 else:
     gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, num_nodes)
 
@@ -453,10 +463,40 @@ gdfITNLink, gdfITNNode, dfedges = create_vehicle_road_network(gdfRoadLink, gdfRo
 
 # Load the Open Roads road network as a nx graph
 road_graph = nx.MultiGraph()
-gdfRoadLink['fid_dict'] = gdfRoadLink.apply(lambda x: {"fid":x['fid'],'geometry':x['geometry']}, axis=1)
+gdfRoadLink['fid_dict'] = gdfRoadLink.apply(lambda x: {"fid":x['fid'],'geometry':x['geometry'], 'weight':x['weight']}, axis=1)
 edges = gdfRoadLink.loc[:,['MNodeFID','PNodeFID', 'fid_dict']].to_records(index=False)
 road_graph.add_edges_from(edges)
 gdfRoadLink.drop('fid_dict', axis=1, inplace=True)
+
+
+#
+# Restricting network to 1000m buffer zone
+#
+
+# Find the or node nearest the centre poi
+gdfRoadNode['dist_to_centre'] = gdfRoadNode.distance(centre_poi_geom)
+nearest_node_id = gdfRoadNode.sort_values(by = 'dist_to_centre', ascending=True)['node_fid'].values[0]
+
+# Get largest connected component and then nodes within buffer distance from centre
+reachable_nodes = largest_connected_component_nodes_within_dist(road_graph, nearest_node_id, config['study_area_dist']+1, 'weight')
+road_graph = road_graph.subgraph(reachable_nodes).copy()
+
+# Remove dead ends by removing nodes with degree 1 continually  until no degree 1 nodes left
+U = road_graph.to_undirected()
+dfDegree = pd.DataFrame(U.degree(), columns = ['nodeID','degree'])
+dead_end_nodes = dfDegree.loc[dfDegree['degree']==1, 'nodeID'].values
+removed_nodes = []
+while(len(dead_end_nodes)>0):
+    U.remove_nodes_from(dead_end_nodes)
+    removed_nodes = np.concatenate([removed_nodes, dead_end_nodes])
+    dfDegree = pd.DataFrame(U.degree(), columns = ['nodeID','degree'])
+    dead_end_nodes = dfDegree.loc[dfDegree['degree']==1, 'nodeID'].values
+
+road_graph.remove_nodes_from(removed_nodes)
+
+gdfRoadLink = gdfRoadLink.loc[ gdfRoadLink['fid'].isin(nx.get_edge_attributes(road_graph, 'fid').values())]
+gdfRoadNode = gdfRoadNode.loc[ gdfRoadNode['node_fid'].isin(road_graph.nodes)]
+
 
 gdfPaveNode = pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = angle_range, lane_width = lane_width, crs=projectCRS)
 gdfPaveLink = pavement_network_links(gdfPaveNode, gdfRoadLink, road_graph, crs = projectCRS)
