@@ -458,9 +458,6 @@ if config['grid_type'] == 'quad':
 else:
     gdfRoadLink, gdfRoadNode = create_grid_road_network(environment_limits, num_nodes)
 
-# Create version of the road network vehicles travel on
-gdfITNLink, gdfITNNode, dfedges = create_vehicle_road_network(gdfRoadLink, gdfRoadNode)
-
 # Load the Open Roads road network as a nx graph
 road_graph = nx.MultiGraph()
 gdfRoadLink['fid_dict'] = gdfRoadLink.apply(lambda x: {"fid":x['fid'],'geometry':x['geometry'], 'weight':x['weight']}, axis=1)
@@ -497,6 +494,8 @@ road_graph.remove_nodes_from(removed_nodes)
 gdfRoadLink = gdfRoadLink.loc[ gdfRoadLink['fid'].isin(nx.get_edge_attributes(road_graph, 'fid').values())]
 gdfRoadNode = gdfRoadNode.loc[ gdfRoadNode['node_fid'].isin(road_graph.nodes)]
 
+# Create version of the road network vehicles travel on
+gdfITNLink, gdfITNNode, dfedges = create_vehicle_road_network(gdfRoadLink, gdfRoadNode)
 
 gdfPaveNode = pavement_network_nodes(road_graph, gdfRoadNode, gdfRoadLink, angle_range = angle_range, lane_width = lane_width, crs=projectCRS)
 gdfPaveLink = pavement_network_links(gdfPaveNode, gdfRoadLink, road_graph, crs = projectCRS)
