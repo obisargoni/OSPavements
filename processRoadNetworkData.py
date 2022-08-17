@@ -872,7 +872,7 @@ def run():
     U_clip = simplify_graph(U_clip, strict=True, remove_rings=True, rebuild_geoms = False)
     U_clip = U_clip.to_undirected()
 
-    U_ang = break_edges_by_angle(U_clip, 10, 15, "strg_id", "strg_ang_id")
+    U_ang = break_edges_by_angle(U_clip, config['angle_threshold'], 15, "strg_id", "strg_ang_id")
 
     # Convert graph to data frames and clean up
     gdfORNode, gdfORLink = osmnx.graph_to_gdfs(U_ang)
