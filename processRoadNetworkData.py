@@ -669,8 +669,11 @@ with open("config.json") as f:
 
 gis_data_dir = config['gis_data_dir']
 
-itn_file = os.path.join(gis_data_dir, config['mastermap_itn_link_file'])
-itn_node_file = os.path.join(gis_data_dir, config["mastermap_itn_node_file"])
+# separate file format used for the Northamptopn data
+#itn_file = os.path.join(gis_data_dir, config['mastermap_itn_link_file'])
+#itn_node_file = os.path.join(gis_data_dir, config["mastermap_itn_node_file"])
+itn_file = os.path.join(gis_data_dir, config['mastermap_itn_file'])
+
 
 open_roads_link_file = os.path.join(gis_data_dir, config['open_roads_link_file'])
 open_roads_node_file = os.path.join(gis_data_dir, config['open_roads_node_file'])
@@ -712,6 +715,22 @@ def run():
         gdfITNNode.crs = projectCRS
     else:
         assert gdfITNNode.crs.to_string().lower() == projectCRS
+
+    # Single file version
+    ''' 
+    # Mastermap ITN data - for road network
+    gdfITNLink = gpd.read_file(itn_file, layer = "RoadLink")
+    if gdfITNLink.crs is None:
+        gdfITNLink.crs = projectCRS
+    else:
+        assert gdfITNLink.crs.to_string().lower() == projectCRS
+
+    gdfITNNode = gpd.read_file(itn_file, layer = "RoadNode")
+    if gdfITNNode.crs is None:
+        gdfITNNode.crs = projectCRS
+    else:
+        assert gdfITNNode.crs.to_string().lower() == projectCRS
+    '''
 
     # OS Open Road - for ped road network
     gdfORLink = gpd.read_file(open_roads_link_file)
