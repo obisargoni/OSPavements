@@ -5,6 +5,7 @@ import json
 import numpy as np
 import geopandas as gpd
 import pandas as pd
+import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.transforms as tfrms
 from shapely.geometry import Point
@@ -21,7 +22,45 @@ from shapely.geometry import Point
 #
 #
 #################################
-def subplot_road_network(f, ax, gdfORLink, class_col, title, inset_rec, config):
+def subplot_road_network(f, ax, gdfORLink, graph, class_col, title, inset_rec, config):
+    # Plot classified links in a dark colour then unclassified (ie residential links) in a brighter colour
+    gdfORLink.plot(ax=ax, color = config["road_link"]["color"])
+
+    # Plot horizontal bar to show difference in number of links and total length
+    gdfORLink['is_restricted'] = False
+
+    length_sum = lambda s: s.length.sum()
+    link_count = lambda s: s.unique().shape[0]
+    dfTypeCount = gdfORLink.groupby('is_restricted').agg(  Link_Count=pd.NamedAgg(column='fid', aggfunc=link_count),
+                                                            Link_Length=pd.NamedAgg(column='geometry', aggfunc=length_sum),).reset_index()
+    dfTypeCount = dfTypeCount.set_index('is_restricted').T
+
+    # get number of intersections
+    dfDeg = pd.DataFrame(graph.degree, columns = ['node','degree'])['degree'].value_counts()
+    n_intersections = dfDeg.sum() - dfDeg[2]
+    dfTypeCount = pd.concat([dfTypeCount, pd.Series({'Intersections':n_intersections})])
+
+    # Add annotations to plot to show these figures
+    ax.text(-0.15, 1.1 , "Intersections: {}".format( int(dfTypeCount.loc['Intersections', False])), transform = ax.transAxes, fontsize=20)
+    ax.text(-0.15, 1.03 , "Total link length: {}m".format( int(np.round(dfTypeCount.loc['Link_Length', False]))), transform = ax.transAxes, fontsize=20)
+
+    ax.set_axis_off()
+
+
+    # set x and y lims
+    xmin, ymin, xmax, ymax = gdfORLink.total_bounds
+    ax.set_xlim(xmin = xmin-10, xmax=xmax)
+    ax.set_ylim(ymin = ymin-70, ymax=ymax)
+
+    # Add hack scale bar
+    trans = tfrms.blended_transform_factory( ax.transAxes, ax.transAxes )
+    ax.errorbar( xmin+250, ymin-60, xerr=250, color='white', capsize=5)
+    ax.text( xmin+250, ymin-60-10, '500m',  horizontalalignment='center', verticalalignment='top', fontsize=15)
+    ax.set_title(title, y=-0.2, fontdict={'fontsize':25})
+
+    return ax
+
+def subplot_road_network_highlight(f, ax, gdfORLink, graph, class_col, title, inset_rec, config):
     # Plot classified links in a dark colour then unclassified (ie residential links) in a brighter colour
     gdfORLink.loc[ gdfORLink[class_col]=='true'].plot(ax=ax, color = config["road_link"]["color"])
     gdfORLink.loc[ gdfORLink[class_col]=='false'].plot(ax=ax, color = config["line_highlight_color"])
@@ -99,14 +138,19 @@ def subplot_road_network(f, ax, gdfORLink, class_col, title, inset_rec, config):
 
     return ax
 
-def figure_road_network(gdfs, class_col, titles, inset_rects, config):
+def figure_road_network(gdfs, graphs, class_col, titles, inset_rects, config, highlight=True):
     '''Plot the road network for the study area, highlighting the residential roads.
     '''
     nplots = len(titles)
     f, axs = plt.subplots(1,nplots, figsize = (10*nplots,12))
     for i, gdfORLink in enumerate(gdfs):
-        ax = subplot_road_network(f, axs[i], gdfORLink, class_col, titles[i], inset_rects[i], config)
-    f.suptitle("Restricted and non-restricted roads in model environments", fontsize = 30)
+        if highlight:
+            ax = subplot_road_network_highlight(f, axs[i], gdfORLink, graphs[i], class_col, titles[i], inset_rects[i], config)
+            title = "Restricted and non-restricted roads in model environments"
+        else:
+            ax = subplot_road_network(f, axs[i], gdfORLink, graphs[i], class_col, titles[i], inset_rects[i], config)
+            title = "Environment Road Networks"
+    f.suptitle(title, fontsize = 30)
     #plt.tight_layout()
     return f
     
@@ -125,12 +169,13 @@ with open("figure_config.json") as f:
     fig_config = json.load(f)
 
 img_dir = "./thesis_images/"
-output_road_network_fig_path = os.path.join(img_dir, "road_networks.png")
+highlight = False
+output_road_network_fig_path = os.path.join(img_dir, "road_networks_highlight_{}.png".format(highlight))
 
-with open("../configs/config_toygrid_block_169nodes.json") as f:
+with open("../configs/config_toygrid_block_141nodes_buffered.json") as f:
     uniform_config = json.load(f)
 
-with open("../configs/config_quadgrid_block100.json") as f:
+with open("../configs/config_quadgrid_block_145nodes_buffer.json") as f:
     quad_config = json.load(f)
 
 with open("../configs/config_claphamcommon.json") as f:
@@ -145,8 +190,20 @@ gdfORLinkQuad = gpd.read_file(quad_road_link_file)
 cc_road_link_file = os.path.join(cc_config['gis_data_dir'], "processed_gis_data", cc_config["openroads_link_processed_file"])
 gdfORLinkCC = gpd.read_file(cc_road_link_file)
 
-#cpn.gdfORLink['class'] = cpn.gdfORLink['class'].replace(class_rename_dict)
-#assert cpn.gdfORLink.loc[ ~cpn.gdfORLink['class'].isin(['Unclassified','A Road','B Road', 'Classified Unnumbered'])].shape[0] == 0
+# create pavement networks to get figures on numbers of intersections in each environment
+ug_graph = nx.MultiGraph()
+edges = gdfORLinkUniform.loc[:,['MNodeFID','PNodeFID']].to_records(index=False)
+ug_graph.add_edges_from(edges)
+
+qg_graph = nx.MultiGraph()
+edges = gdfORLinkQuad.loc[:,['MNodeFID','PNodeFID']].to_records(index=False)
+qg_graph.add_edges_from(edges)
+
+cc_graph = nx.MultiGraph()
+edges = gdfORLinkCC.loc[:,['MNodeFID','PNodeFID']].to_records(index=False)
+cc_graph.add_edges_from(edges)
+
+
 
 #################################
 #
@@ -159,6 +216,7 @@ gdfORLinkCC = gpd.read_file(cc_road_link_file)
 class_col = 'infCross'
 
 gdfs = [gdfORLinkUniform, gdfORLinkQuad, gdfORLinkCC]
+graphs = [ug_graph, qg_graph, cc_graph]
 titles = ['Uniform Grid', 'Quad Grid', 'Clapham Common']
 error_bar_locs = [(500,-20), (500,-20),  (528680, 174545)]
 inset_rects = [ [0.05, 0.65, 0.1, 0.15], [0.35, 0.65, 0.1, 0.15], [0.65, 0.65, 0.1, 0.15] ]
@@ -170,5 +228,5 @@ error_bar_locs = [(500,-20),  (528680, 174545)]
 inset_rects = [ [0.0, 0.65, 0.2, 0.1], [0.5, 0.65, 0.2, 0.1]]
 '''
 
-f_road = figure_road_network(gdfs, class_col, titles, inset_rects, fig_config)
+f_road = figure_road_network(gdfs, graphs, class_col, titles, inset_rects, fig_config, highlight = highlight)
 f_road.savefig(output_road_network_fig_path)
