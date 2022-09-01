@@ -304,8 +304,8 @@ def figure_tactical_path(study_area_rls, origin_id, dest_id, sp, n_horizon_links
     # add annotations
     o_coords = gdfPedODs.loc[ gdfPedODs['fid']==origin_id, 'geometry'].values[0].coords[0]
     d_coords = gdfPedODs.loc[ gdfPedODs['fid']==dest_id, 'geometry'].values[0].coords[0]
-    ax.annotate("O", xy=o_coords, xycoords='data', xytext=(o_coords[0]+od_offsets[0][0], o_coords[1]+od_offsets[0][1]), textcoords='data', color="white", fontsize=config['annotate_fontsize'])
-    ax.annotate("D", xy=d_coords, xycoords='data', xytext=(d_coords[0]+od_offsets[1][0], d_coords[1]+od_offsets[1][1]), textcoords='data', color="white", fontsize=config['annotate_fontsize'])
+    ax.annotate("O", xy=o_coords, xycoords='data', xytext=(o_coords[0]+od_offsets[0][0], o_coords[1]+od_offsets[0][1]), textcoords='data', color=config['od']['color'], fontsize=config['annotate_fontsize'], fontweight = 'bold')
+    ax.annotate("D", xy=d_coords, xycoords='data', xytext=(d_coords[0]+od_offsets[1][0], d_coords[1]+od_offsets[1][1]), textcoords='data', color=config['od']['color'], fontsize=config['annotate_fontsize'], fontweight = 'bold')
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
@@ -351,7 +351,7 @@ def figure_operational_waypoints(study_area_rls, origin_id, dest_id, tp, gdfTopo
     gdftp_nodes.sort_values(by='y', ascending=True, inplace=True)
     for i,g in enumerate(gdftp_nodes['geometry'].values):
         x,y = g.coords[0]
-        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data', color=annotation_color, fontsize = config['annotate_fontsize'])
+        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data', color=annotation_color, fontsize = config['annotate_fontsize'], fontweight='bold')
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
@@ -415,11 +415,11 @@ def figure_operational_path(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, 
     # annotate the location of tactical path junctions
     for i,g in enumerate(gdftp_nodes['geometry'].values):
         x,y = g.coords[0]
-        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data', color=annotation_color, fontsize = config['annotate_fontsize'])
+        ax.annotate(i+1, xy=(x, y), xycoords='data', xytext=(x+offsets[i][0], y+offsets[i][1]), textcoords='data', color=annotation_color, fontsize = config['annotate_fontsize'], fontweight='bold')
 
     for i,c in enumerate(crossing_coords):
         x,y = c
-        ax.annotate("C{}".format(i+1), xy=(x, y), xycoords='data', xytext=(x+crossing_offsets[i][0], y+crossing_offsets[i][1]), textcoords='data', color="white", fontsize = config['annotate_fontsize'])
+        ax.annotate("C{}".format(i+1), xy=(x, y), xycoords='data', xytext=(x+crossing_offsets[i][0], y+crossing_offsets[i][1]), textcoords='data', color=config['od']['color'], fontsize = config['annotate_fontsize'], fontweight='bold')
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
@@ -471,12 +471,12 @@ def figure_experiments(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTo
     # add annotations
     o_coords = gdfPedODs.loc[ gdfPedODs['fid']==origin_id, 'geometry'].values[0].coords[0]
     d_coords = gdfPedODs.loc[ gdfPedODs['fid']==dest_id, 'geometry'].values[0].coords[0]
-    ax.annotate("O", xy=o_coords, xycoords='data', xytext=(o_coords[0]+od_offsets[0][0], o_coords[1]+od_offsets[0][1]), textcoords='data', color="white", fontsize=config['annotate_fontsize'])
-    ax.annotate("D", xy=d_coords, xycoords='data', xytext=(d_coords[0]+od_offsets[1][0], d_coords[1]+od_offsets[1][1]), textcoords='data', color="white", fontsize=config['annotate_fontsize'])
+    ax.annotate("O", xy=o_coords, xycoords='data', xytext=(o_coords[0]+od_offsets[0][0], o_coords[1]+od_offsets[0][1]), textcoords='data', color=config['od']['color'], fontsize=config['annotate_fontsize'], fontweight = 'bold')
+    ax.annotate("D", xy=d_coords, xycoords='data', xytext=(d_coords[0]+od_offsets[1][0], d_coords[1]+od_offsets[1][1]), textcoords='data', color=config['od']['color'], fontsize=config['annotate_fontsize'], fontweight = 'bold')
     
     for i, rl in enumerate(road_links_annotate):
         rl_cent = gdfORLink.loc[ gdfORLink['fid']==rl, 'geometry'].values[0].centroid.coords[0]
-        ax.text(rl_annotate_positions[i][0], rl_annotate_positions[i][1], "RL{}".format(i+1), color="white", fontsize = config['annotate_fontsize'])
+        ax.text(rl_annotate_positions[i][0], rl_annotate_positions[i][1], "RL{}".format(i+1), color=config['od']['color'], fontsize = config['annotate_fontsize'], fontweight='bold')
 
     # Set limits
     xmin, ymin, xmax, ymax = gdfTopoPedSA.total_bounds
