@@ -13,7 +13,7 @@ from shapely.geometry import Point, LineString
 sys.path.append("..")
 import createPavementNetwork as cpn
 
-plt.style.use('dark_background')
+#plt.style.use('dark_background')
 
 with open("figure_config.json") as f:
     fig_config = json.load(f)

@@ -1,19 +1,19 @@
 { 
   "annotate_fontsize":20,
-  "pavement": {"color":"black", "edgecolor":"white",  "linewidth":2},
-  "carriageway": {"color":"black", "edgecolor":"", "linewidth":2},
+  "pavement": {"color":"darkgrey", "edgecolor":"white",  "linewidth":2},
+  "carriageway": {"color":"grey", "edgecolor":"", "linewidth":2},
 
-  "road_link": {"color":"#bbbbbb", "path_color":"#4cf06b", "linewidth":0.5, "pathwidth":3},
-  "road_node": {"color":"#bbbbbb", "path_color":"#4cf06b", "linewidth":1, "pathwidth":3},
+  "road_link": {"color":"#4a4a4a", "path_color":"#ff8000", "linewidth":0.5, "pathwidth":2.5},
+  "road_node": {"color":"#4a4a4a", "path_color":"#ff8000", "linewidth":1, "pathwidth":3},
   
-  "pavement_link": {"color":"#4c8695", "path_color":"#4cf06b", "linewidth":1, "pathwidth":2},
-  "pavement_node": {"color":"#4c8695", "path_color":"#4cf06b", "linewidth":1, "pathwidth":2},
+  "pavement_link": {"color":"#4c8695", "path_color":"#ff8000", "linewidth":3, "pathwidth":3},
+  "pavement_node": {"color":"#4c8695", "path_color":"#ff8000", "linewidth":3, "pathwidth":3},
   
   "rays": {"color":"#000080", "linewidth":2},
-  "od": {"color":"#bbbbbb", "linewidth":3},
+  "od": {"color":"#252525", "linewidth":3},
 
   "line_lowlight_color": "#4e72d3",
-  "line_highlight_color": "#4cf06b",
+  "line_highlight_color": "#ff8000",
 
   "tactical1_config": { "or_node_ids": ["node_id_71"], "road_link_id":"9745D155-3C95-4CCD-BC65-0908D57FA83A_0", "od": [4, 9], "pave_links_exclude":["pave_link_82_92"],
                         "study_area_ids":["DC163277-D563-4621-8F7B-F9C9B52AA9A7_0",
@@ -60,8 +60,8 @@
                             "sp":[], "ntl":0, 
                             "tp":[  "pave_link_106_91",
                                     "pave_link_91_112"],
-                            "offsets": [[-3,-2.5],[-2,3],[-2,2]],
-                            "annotation_color":"white",
+                            "offsets": [[-3,-3],[-2,3],[-2,2]],
+                            "annotation_color":"#252525",
                             "crossing_coords":[[530460, 180852], [530454, 180858.2]],
                             "crossing_offsets": [[1.5,1],[2, -1]],
                             "crossing_coords_tp_index":0
@@ -76,7 +76,7 @@
                                     "pave_link_89_106",
                                     "pave_link_90_111"],
                             "offsets": [[-2,2.5],[-2,2.5],[-2,2.5], [-2,2.5]],
-                            "annotation_color":"white",
+                            "annotation_color":"#252525",
                             "crossing_coords":[[530474, 180861], [530484, 180868]],
                             "crossing_offsets": [[2.5,-1],[1, -3]],
                             "crossing_coords_tp_index":1
