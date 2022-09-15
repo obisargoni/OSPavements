@@ -5,7 +5,7 @@
   "study_area_dist": 1000,
   "num_nodes":300,
   "flows_seed": 1,
-  "prop_ped_poly_ods":0.2,
+  "prop_ped_poly_ods":0.32,
   "grid_type":"quad",
 
   "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\QuadGrid145NodesBuffer",

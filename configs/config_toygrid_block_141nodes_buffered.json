@@ -7,7 +7,7 @@
   "nblocksy":5,
   "num_nodes":289,
   "flows_seed": 1,
-  "prop_ped_poly_ods":0.2,
+  "prop_ped_poly_ods":0.24,
   "grid_type":"uniform",
 
   "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\ToyGrid141",
