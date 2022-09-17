@@ -1,0 +1,36 @@
+{
+  "clip_file": "JunctClip.shp",
+  "centre_poi_ref": 17972260,
+  "study_area_dist": 1000,
+  "flows_seed": 1,
+
+  "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\CoventGardenWaterloo",
+  "batch_data_dir": "..\\output\\batch\\model_run_data",
+
+  "or_links_exclude_ped_ods": [],
+  "manual_pedestrian_polygon_fids": [],
+
+  "mastermap_itn_file": "mastermap-itn_4092598\\mastermap-itn_4092598_0.gml.gz",
+  "open_roads_link_file": "open-roads_4092887\\TQ_RoadLink.shp",
+  "open_roads_node_file": "open-roads_4092887\\TQ_RoadNode.shp",
+  "topographic_file":"mastermap-topo_4092599\\mastermap-topo_4092599.gpkg",
+  "poi_file": "poi_4092666\\poi_4092666.gpkg",
+  
+  "mastermap_link_processed_file":"mastermap-itn RoadLink Intersect Within.shp",
+  "mastermap_node_processed_file":"mastermap-itn RoadNode Intersect Within.shp",
+  "mastermap_itn_processed_direction_file": "mastermap-itn RoadLink Intersect Within with orientation.shp",
+  "openroads_link_processed_file":"open-roads RoadLink Intersect Within simplify angles.shp",
+  "openroads_node_processed_file":"open-roads RoadNode Intersect Within simplify angles.shp",
+  "topo_vehicle_processed_file":"topographicAreaVehicle.shp",
+  "topo_pedestrian_processed_file":"topographicAreaPedestrian.shp",
+  "topo_boundary_processed_file":"boundaryPedestrianVehicleArea.shp",
+  "boundary_file":"boundaryPedestrianVehicleArea.shp",
+  "pavement_nodes_file":"pedNetworkNodes.shp",
+  "pavement_links_file": "pedNetworkLinks.shp",
+  "crossing_alternatives_file": "CrossingAlternatives.shp",
+
+  "vehicle_od_file": "OD_vehicle_nodes_intersect_within.shp",
+  "vehicle_od_flows": "vehicleODFlows.csv",
+  "pedestrian_od_file": "OD_pedestrian_nodes.shp",
+  "pedestrian_od_flows":"pedestrianODFlows.csv"
+}

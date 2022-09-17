@@ -98,17 +98,21 @@ def figure_pavement_nodes_for_single_road_node(node_id, gdfPedNodes, gdfORLink, 
         rays = cpn.rays_between_angles(a1, a2, road_node, ray_length = cpn.default_ray_length)
 
         gdfRays = gpd.GeoDataFrame({'geometry':rays})
-        gdfRLPlot = cpn.gdfORLink.loc[ (cpn.gdfORLink['fid']==row['v1rlID']) | (cpn.gdfORLink['fid']==row['v2rlID'])]
+        gdfRLPlot = gdfORLink.loc[ (gdfORLink['fid']==row['v1rlID']) | (gdfORLink['fid']==row['v2rlID'])]
         gdfRNPlot = gdfORNode.loc[ gdfORNode['node_fid']==node_id]
 
         gdfPedNodes = gdfPedNodes.loc[ (gdfPedNodes['v1rlID'] == row['v1rlID']) & (gdfPedNodes['v2rlID'] == row['v2rlID']) ]
 
-        plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = gdfRLPlot, road_node = gdfRNPlot, rays = gdfRays, pavement_link = None, pavement_node = gdfPedNodes)
+        plot_layers(ax, config, pavement = gdfTopoPed, carriageway = gdfTopoVeh, road_link = gdfRLPlot, road_node = gdfRNPlot, rays = gdfRays, pavement_link = None, pavement_node = None)
+
+        gdfPedNodes.plot(ax=ax, edgecolor = config['pavement_node']['path_color'], facecolor = config['pavement_node']['path_color'], linewidth=config['pavement_node']['pathwidth'], zorder=8)
+
 
         # Set axis limits
         xmin, ymin, xmax, ymax = gdfRLPlot.total_bounds
-        ax.set_xlim(xmin-5, xmax-10)
-        ax.set_ylim(ymin+20, ymax+5)
+        ax.set_xlim(xmin-5, xmax-18)
+        ax.set_ylim(ymin+5, ymax-17)
+        plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
 
     ax.set_axis_off()
     return f
@@ -559,7 +563,7 @@ class_rename_dict = {   'Unknown':'Unclassified',
 #
 cpn.load_data()
 cpn.gdfORLink['class'] = cpn.gdfORLink['class'].replace(class_rename_dict)
-assert cpn.gdfORLink.loc[ ~cpn.gdfORLink['class'].isin(['Unclassified','A Road','B Road', 'Classified Unnumbered'])].shape[0] == 0
+#assert cpn.gdfORLink.loc[ ~cpn.gdfORLink['class'].isin(['Unclassified','A Road','B Road', 'Classified Unnumbered'])].shape[0] == 0
 
 #################################
 #
@@ -583,19 +587,12 @@ def run():
 
     gdfPedODs = gpd.read_file( os.path.join(cpn.output_directory, cpn.config['pedestrian_od_file']) )
 
-    # set which road node to illustrate getting ped nodes for
-    node_id = fig_config['tactical1_config']['or_node_ids'][0]
-    road_link_id = gdfPedNodes.loc[ gdfPedNodes['juncNodeID']==node_id, 'v1rlID'].values[0]
-
     road_link_id = fig_config['tactical1_config']['road_link_id']
 
     #
     # Figures showing pavement network creation
     #
     #
-    f_node_rays = figure_pavement_nodes_for_single_road_node(node_id, gdfPedNodes, cpn.gdfORLink, cpn.gdfORNode, cpn.gdfTopoVeh, cpn.gdfTopoPed, config = fig_config)
-    f_node_rays.savefig(output_rays_node_fig_path)
-
     f_road_pave_nodes = figure_pavement_nodes_for_single_road_link(road_link_id,cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, config = fig_config)
     f_road_pave_nodes.savefig(output_pavement_nodes_fig_path)
 
@@ -753,3 +750,10 @@ def run():
     f_experiment2 = figure_experiments(study_area_rls, origin_id, dest_id, tp, gdfTopoVeh, gdfTopoPed, gdfORNode, gdfORLink, gdfPedNodes, gdfPedLinks, gdfod, cas_files, ca_colors, road_links_annotate, rl_annotate_positions, od_offsets, bounds_offsets, pavement_polys_exclude = ppe, config = fig_config)
     #f_experiment2.tight_layout()
     f_experiment2.savefig(output_experiment2_path)
+
+
+    # Also creating pavement node rays figs using clapham common data
+    node_id = fig_config['node_ray_config']['or_node_id']
+    road_link_id = gdfPedNodes.loc[ gdfPedNodes['juncNodeID']==node_id, 'v1rlID'].values[0]
+    f_node_rays = figure_pavement_nodes_for_single_road_node(node_id, gdfPedNodes, gdfORLink, gdfORNode, gdfTopoVeh, gdfTopoPed, config = fig_config)
+    f_node_rays.savefig(output_rays_node_fig_path)
