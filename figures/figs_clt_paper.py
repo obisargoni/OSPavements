@@ -594,7 +594,7 @@ def run():
     #
     #
     f_node_rays = figure_pavement_nodes_for_single_road_node(node_id, gdfPedNodes, cpn.gdfORLink, cpn.gdfORNode, cpn.gdfTopoVeh, cpn.gdfTopoPed, config = fig_config)
-    
+    f_node_rays.savefig(output_rays_node_fig_path)
 
     f_road_pave_nodes = figure_pavement_nodes_for_single_road_link(road_link_id,cpn.gdfTopoVeh, cpn.gdfTopoPed, cpn.gdfORNode, cpn.gdfORLink, gdfPedNodes, gdfPedLinks, config = fig_config)
     f_road_pave_nodes.savefig(output_pavement_nodes_fig_path)
