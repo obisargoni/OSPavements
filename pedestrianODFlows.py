@@ -164,5 +164,26 @@ for d in ODids:
     # No self flows
     dfFlows.loc[d, d] = 0
 
+# Create another flows dataframe of flows to and from the central poi
+dfFlowsTwoWay = dfFlows.copy()
+for o in ODids:
+
+    # Calculate the flows from all other os to this d
+    o_out_flow = gdfODs.loc[gdfODs['fid']==o, 'inFlow'].values[0]
+
+    if o_out_flow == 0:
+        continue
+
+    Ds = dfFlowsTwoWay[o].index
+    nDs = len(Ds) - 1
+    flows = gdfODs.set_index('fid').loc[ Ds, 'geometry'].map(lambda g: get_flow(g, nDs, o_out_flow, T = T, v = v, distribution = 'uniform'))
+
+    dfFlowsTwoWay.loc[o] = flows
+
+    # No self flows
+    dfFlowsTwoWay.loc[o, o] = 0
+
+
 
 dfFlows.to_csv(pedestrian_od_flows, index=False)
+dfFlowsTwoWay.to_csv(os.path.splitext(pedestrian_od_flows)[0]+"Twoway.csv", index=False)
