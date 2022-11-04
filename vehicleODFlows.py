@@ -37,7 +37,7 @@ output_flows_path = os.path.join(processed_gis_dir, config['vehicle_od_flows'])
 OD_shapefile_path = os.path.join(processed_gis_dir, config['vehicle_od_file'])
 
 # Proportion of ITN nodes to use as vehicle ODs
-prop_random_ODs = 0.3
+prop_random_ODs = config["prob_veh_node_ods"]
 
 
 ############################
@@ -59,12 +59,16 @@ n_ODs = int(prop_random_ODs * len(graphRL.nodes()))
 # Select nodes with degree = 2 or 1. Since directed, these are the nodes at the edge of the network
 dfDegree = pd.DataFrame(graphRL.to_undirected().degree, columns = ['node','deg'])
 edge_nodes = dfDegree.loc[ dfDegree['deg'] == 1, 'node'].values
-n_ODs-= len(edge_nodes)
+if len(edge_nodes)>0:
+	chosen_edge_nodes = np.random.choice(edge_nodes, n_ODs//2, replace=False)
+else:
+	chosen_edge_nodes = []
+n_ODs-= len(chosen_edge_nodes)
 
 remaining_nodes = dfDegree.loc[ ~dfDegree['node'].isin(edge_nodes), 'node'].values
 random_nodes = np.random.choice(remaining_nodes, n_ODs, replace=False)
 
-vehicle_OD_nodes = np.concatenate( [edge_nodes, random_nodes])
+vehicle_OD_nodes = np.concatenate( [chosen_edge_nodes, random_nodes])
 
 gdfOD = gpd.read_file(itn_node_path)
 gdfOD = gdfOD.loc[ gdfOD['fid'].isin(vehicle_OD_nodes), ['fid','geometry']]

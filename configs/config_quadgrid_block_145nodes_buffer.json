@@ -6,6 +6,7 @@
   "num_nodes":300,
   "flows_seed": 1,
   "prop_ped_poly_ods":0.32,
+  "prob_veh_node_ods": 0.6,
   "grid_type":"quad",
 
   "gis_data_dir": "S:\\CASA_obits_ucfnoth\\1. PhD Work\\GIS Data\\QuadGrid145NodesBuffer",
